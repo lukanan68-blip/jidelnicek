@@ -3,6 +3,7 @@ import { INGREDIENT_MAP } from '../data/ingredients';
 import { RECIPE_MAP, RECIPE_SITES, recipeSearchUrl } from '../data/recipes';
 import { agoLabel, daysBetween, fmtAmount, fmtKc, formatDay, formatShort, uid } from '../lib/format';
 import {
+  QUICK_MAX,
   buildLast,
   mealIngredients,
   planCost,
@@ -94,7 +95,7 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
           />
           <span>
             Nechci u toho trávit moc času
-            <small> – jen jídla do 25 min u sporáku</small>
+            <small> – jen jídla do {QUICK_MAX} min u sporáku</small>
           </span>
         </label>
         <label className="check">

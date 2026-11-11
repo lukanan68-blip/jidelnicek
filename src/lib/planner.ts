@@ -13,7 +13,7 @@ import {
 } from './types';
 
 /** Co je „rychlé“: aktivní čas do tolika minut. */
-export const QUICK_MAX = 25;
+export const QUICK_MAX = 35;
 
 /** Postupně rostoucí váha ceny při hledání levnějšího plánu. */
 export const LAMBDAS = [0, 0.15, 0.3, 0.6, 1, 1.8, 3, 6, 12];

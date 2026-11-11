@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { RECIPE_MAP } from '../data/recipes';
-import { buildShopping, generatePlan, makePriceFns, planCost, swapMeal, type PlanInput } from './planner';
+import { QUICK_MAX, buildShopping, generatePlan, makePriceFns, planCost, swapMeal, type PlanInput } from './planner';
 import type { Settings } from './types';
 
 const settings: Settings = {
@@ -75,7 +75,7 @@ describe('plánovač', () => {
 
   it('rychlý režim bere jen rychlá jídla', () => {
     const p = generatePlan(base({}, { quick: true, days: 5 }));
-    for (const m of p.days.flatMap((d) => d.meals)) expect(RECIPE_MAP[m.recipeId].min).toBeLessThanOrEqual(25);
+    for (const m of p.days.flatMap((d) => d.meals)) expect(RECIPE_MAP[m.recipeId].min).toBeLessThanOrEqual(QUICK_MAX);
   });
 
   it('dvojitá várka: oběd další den jsou zbytky z večeře', () => {
