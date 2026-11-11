@@ -1,4 +1,4 @@
-import { INGREDIENT_MAP } from '../data/ingredients';
+import { INGREDIENT_MAP, STAPLE_IDS } from '../data/ingredients';
 import { RECIPES, RECIPE_MAP, type MealType, type Recipe } from '../data/recipes';
 import { addDays, daysBetween, uid } from './format';
 import {
@@ -176,6 +176,7 @@ function pickBest(p: Pick): Cand | undefined {
         const kind = INGREDIENT_MAP[id].kind;
         if (kind === 'side') score += trackedScore(p.dist(id), 1.6);
         else if (kind === 'protein') score += trackedScore(p.dist(id), 1.0);
+        else if (kind === 'veg' && !STAPLE_IDS.has(id)) score += trackedScore(p.dist(id), 0.5);
         const eff = amountCost(id, amount, p.pf.eff(id));
         cost += eff;
         savings += amountCost(id, amount, p.pf.base(id)) - eff;

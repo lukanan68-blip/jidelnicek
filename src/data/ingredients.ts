@@ -82,3 +82,23 @@ export const STORES = ['Albert', 'Lidl', 'Kaufland', 'Billa', 'Tesco', 'Globus',
 export type Store = (typeof STORES)[number];
 
 export const UNIT_LABEL: Record<Unit, string> = { kg: 'kg', l: 'l', ks: 'ks' };
+
+/** Suroviny, které jsou skoro v každém jídle. Zapisují se do historie, ale plánovač je při střídání neřeší. */
+export const STAPLE_IDS = new Set(['cibule', 'cesnek']);
+
+const FRUIT_IDS = ['banany', 'jablka'];
+
+/** Rozdělení surovin v záložce „Co jsem jedl“. */
+export const HISTORY_GROUPS: { title: string; ids: string[] }[] = [
+  { title: 'Přílohy', ids: INGREDIENTS.filter((i) => i.kind === 'side').map((i) => i.id) },
+  {
+    title: 'Maso a ryby',
+    ids: ['kureci-prsa', 'kureci-stehna', 'mlete', 'veprova-plec', 'klobasa', 'sunka', 'ryba', 'tunak'],
+  },
+  { title: 'Vejce a luštěniny', ids: ['vejce', 'cocka', 'cervena-cocka', 'cizrna', 'fazole'] },
+  {
+    title: 'Zelenina',
+    ids: INGREDIENTS.filter((i) => i.kind === 'veg' && !FRUIT_IDS.includes(i.id)).map((i) => i.id),
+  },
+  { title: 'Ovoce', ids: FRUIT_IDS },
+];

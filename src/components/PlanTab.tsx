@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { INGREDIENT_MAP } from '../data/ingredients';
+import { INGREDIENT_MAP, STAPLE_IDS } from '../data/ingredients';
 import { RECIPE_MAP, RECIPE_SITES, recipeSearchUrl } from '../data/recipes';
 import { agoLabel, daysBetween, fmtAmount, fmtKc, formatDay, formatShort, uid } from '../lib/format';
 import {
@@ -198,6 +198,8 @@ function MealCard({ plan, dayIdx, date, meal, history, setHistory, pf, today, on
     .filter((i) => i.kind === 'side' || i.kind === 'protein')
     .sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'side' ? -1 : 1));
 
+  const veg = ings.map(([id]) => INGREDIENT_MAP[id]).filter((i) => i.kind === 'veg' && !STAPLE_IDS.has(i.id));
+
   function toggleEaten() {
     if (eaten) {
       setHistory((h) => h.filter((e) => e.source !== key));
@@ -235,6 +237,18 @@ function MealCard({ plan, dayIdx, date, meal, history, setHistory, pf, today, on
             );
           })}
         </ul>
+      )}
+
+      {veg.length > 0 && (
+        <p className="veg-line">
+          <b>Zelenina a ovoce:</b>{' '}
+          {veg
+            .map((i) => {
+              const d = last.ing[i.id];
+              return `${i.name} ${d ? agoLabel(Math.max(0, daysBetween(d, today))) : 'bez záznamu'}`;
+            })
+            .join(' · ')}
+        </p>
       )}
 
       <details>
