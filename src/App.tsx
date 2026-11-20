@@ -27,8 +27,11 @@ export default function App() {
   const [settings, setSettings] = useStored<Settings>('jid.settings', {
     days: 3,
     budget: 400,
+    useBudget: true,
+    useDate: true,
     slots: { breakfast: true, lunch: true, dinner: true },
     quick: true,
+    noMeat: false,
     duration: DEFAULT_DURATION,
     batch: false,
     startDate: today,
@@ -45,7 +48,10 @@ export default function App() {
   const effectiveSettings: Settings = {
     ...settings,
     duration: { ...DEFAULT_DURATION, ...settings.duration },
-    startDate: settings.startDate < today ? today : settings.startDate,
+    noMeat: !!settings.noMeat,
+    useBudget: settings.useBudget !== false,
+    useDate: settings.useDate !== false,
+    startDate: settings.useDate === false || settings.startDate < today ? today : settings.startDate,
   };
 
   // slevy se berou k prvnímu dni plánu (plán na pondělí použije pondělní leták)

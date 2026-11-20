@@ -10,9 +10,15 @@ export const SLOT_LABEL: Record<Slot, string> = {
 export interface Settings {
   days: number;
   budget: number;
+  /** false = bez rozpočtu (plánuje se bez horního limitu ceny). */
+  useBudget: boolean;
+  /** false = bez data (dny jsou jen „Den 1, Den 2…“, slevy se berou k dnešku). */
+  useDate: boolean;
   slots: Record<Slot, boolean>;
   /** „Nechci u toho trávit moc času“ – jen rychlá jídla. */
   quick: boolean;
+  /** Bez masa a ryb (vejce, mléčné výrobky a luštěniny zůstávají). */
+  noMeat: boolean;
   /** Délka vaření obědů a večeří (celkový čas): do hodiny a / nebo nad hodinu. */
   duration: { short: boolean; long: boolean };
   /** Večeře uvařená dvojitě = oběd další den. */

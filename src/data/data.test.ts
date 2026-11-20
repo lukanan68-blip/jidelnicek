@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { HISTORY_GROUPS, INGREDIENT_MAP, INGREDIENTS } from './ingredients';
-import { HOUR, RECIPES, totalMin } from './recipes';
+import { HOUR, RECIPES, hasMeat, totalMin } from './recipes';
 
 describe('data', () => {
   it('recepty odkazují jen na existující suroviny a přílohy', () => {
@@ -14,6 +14,11 @@ describe('data', () => {
     const mains = RECIPES.filter((r) => r.meal === 'main');
     expect(mains.filter((r) => totalMin(r) <= HOUR).length).toBeGreaterThanOrEqual(20);
     expect(mains.filter((r) => totalMin(r) > HOUR).length).toBeGreaterThanOrEqual(6);
+  });
+
+  it('je dost jídel bez masa pro týdenní plán', () => {
+    expect(RECIPES.filter((r) => r.meal === 'main' && !hasMeat(r)).length).toBeGreaterThanOrEqual(14);
+    expect(RECIPES.filter((r) => r.meal === 'breakfast' && !hasMeat(r)).length).toBeGreaterThanOrEqual(7);
   });
 
   it('každá sledovaná surovina je v záložce Co jsem jedl právě jednou', () => {

@@ -1,3 +1,6 @@
+import { MEAT_IDS } from './ingredients';
+import { WEB_RECIPES } from './recipes-web';
+
 export type MealType = 'breakfast' | 'main';
 
 export interface Recipe {
@@ -18,6 +21,13 @@ export interface Recipe {
   noBatch?: boolean;
   /** Vlastní hledací dotaz pro odkaz na recept. */
   search?: string;
+  /** Odkud je recept (suroviny a čas), s odkazem na originál. */
+  source?: { site: string; url: string };
+}
+
+/** Jídlo obsahuje maso nebo ryby. */
+export function hasMeat(r: Recipe): boolean {
+  return r.ing.some(([id]) => MEAT_IDS.has(id));
 }
 
 /** Hranice pro filtr „do hodiny“ / „nad hodinu“ (celkový čas, tedy včetně pečení a dušení). */
@@ -42,7 +52,7 @@ export function matchesDuration(r: Recipe, d: DurationFilter = DEFAULT_DURATION)
 
 const ALL_STARCH = ['testoviny', 'ryze', 'knedliky', 'brambory'];
 
-export const RECIPES: Recipe[] = [
+const OWN_RECIPES: Recipe[] = [
   // ---------- SNÍDANĚ ----------
   { id: 'kase-banan', name: 'Ovesná kaše s banánem', meal: 'breakfast', min: 10, sides: ['vlocky'], sideAmounts: { vlocky: 100 }, ing: [['mleko', 400], ['banany', 200]] },
   { id: 'michana-vejce', name: 'Míchaná vejce s rajčetem a chlebem', meal: 'breakfast', min: 10, sides: ['chleb'], sideAmounts: { chleb: 150 }, ing: [['vejce', 4], ['rajcata', 100]] },
@@ -92,7 +102,21 @@ export const RECIPES: Recipe[] = [
   { id: 'veprova-pecene', name: 'Vepřová pečeně se zelím', meal: 'main', min: 15, extra: 100, sides: ['knedliky', 'brambory'], ing: [['veprova-plec', 600], ['zeli', 400], ['cibule', 100], ['cesnek', 1]], search: 'vepřo knedlo zelo' },
   { id: 'cockova-polevka', name: 'Čočková polévka s klobásou', meal: 'main', min: 20, extra: 50, sides: ['chleb'], sideAmounts: { chleb: 200 }, ing: [['cocka', 150], ['klobasa', 150], ['mrkev', 100], ['cibule', 80], ['cesnek', 1]] },
   { id: 'dusena-stehna', name: 'Kuřecí stehna dušená na rajčatech', meal: 'main', min: 20, extra: 45, sides: ['ryze', 'brambory', 'kuskus', 'testoviny'], ing: [['kureci-stehna', 700], ['rajcata-konzerva', 2], ['cibule', 100], ['paprika', 100]] },
+
+  // ---------- BEZ MASA (vejce, mléčné výrobky a luštěniny zůstávají) ----------
+  { id: 'zapeceny-kvetak-syr', name: 'Zapečený květák se sýrem a vejci', meal: 'main', min: 20, extra: 30, sides: ['brambory', 'chleb'], sideAmounts: { chleb: 150 }, ing: [['kvetak', 500], ['syr', 100], ['vejce', 2], ['smetana', 1]] },
+  { id: 'omeleta-syr', name: 'Omeleta se sýrem a rajčaty', meal: 'main', min: 15, sides: ['chleb', 'tortilla'], sideAmounts: { chleb: 150, tortilla: 2 }, ing: [['vejce', 5], ['syr', 60], ['rajcata', 150], ['salat', 1]], noBatch: true },
+  { id: 'testoviny-rajcatova', name: 'Těstoviny s rajčatovou omáčkou a sýrem', meal: 'main', min: 20, sides: ['testoviny'], ing: [['rajcata-konzerva', 1], ['cibule', 80], ['cesnek', 1], ['syr', 60]] },
+  { id: 'cockova-polevka-zel', name: 'Čočková polévka se zeleninou', meal: 'main', min: 20, extra: 40, sides: ['chleb'], sideAmounts: { chleb: 200 }, ing: [['cocka', 150], ['mrkev', 100], ['cibule', 80], ['cesnek', 1]] },
+  { id: 'chilli-sin-carne', name: 'Fazolové chilli bez masa', meal: 'main', min: 25, sides: ['ryze', 'tortilla', 'chleb'], sideAmounts: { chleb: 150 }, ing: [['fazole', 2], ['rajcata-konzerva', 1], ['kukurice', 1], ['paprika', 100], ['cibule', 100]] },
+  { id: 'smazeny-syr', name: 'Smažený sýr s bramborami', meal: 'main', min: 30, sides: ['brambory', 'ryze'], ing: [['syr', 250], ['vejce', 2], ['strouhanka', 80], ['mouka', 40], ['okurka', 1]], noBatch: true },
+  { id: 'rizoto-zeleninove', name: 'Zeleninové rizoto se sýrem', meal: 'main', min: 30, sides: ['ryze'], sideAmounts: { ryze: 180 }, ing: [['hrasek', 100], ['mrkev', 100], ['cibule', 80], ['zampiony', 150], ['syr', 40]] },
+  { id: 'testoviny-spenat', name: 'Těstoviny se špenátem a smetanou', meal: 'main', min: 20, sides: ['testoviny'], ing: [['spenat', 200], ['smetana', 1], ['cesnek', 1], ['syr', 40]] },
+  { id: 'cizrna-kuskus', name: 'Cizrnový salát s kuskusem', meal: 'main', min: 15, sides: ['kuskus', 'bulgur'], ing: [['cizrna', 2], ['okurka', 1], ['rajcata', 150], ['jogurt', 1]], noBatch: true },
 ];
+
+/** Naše recepty + recepty načtené z webů. */
+export const RECIPES: Recipe[] = [...OWN_RECIPES, ...WEB_RECIPES];
 
 export const RECIPE_MAP: Record<string, Recipe> = Object.fromEntries(RECIPES.map((r) => [r.id, r]));
 
@@ -100,10 +124,8 @@ export const RECIPE_MAP: Record<string, Recipe> = Object.fromEntries(RECIPES.map
 export const RECIPE_SITES: { name: string; domain?: string }[] = [
   { name: 'Toprecepty', domain: 'toprecepty.cz' },
   { name: 'Recepty.cz', domain: 'recepty.cz' },
-  { name: 'Vařecha', domain: 'varecha.cz' },
   { name: 'Kuchařka pro dceru', domain: 'kucharkaprodceru.cz' },
   { name: 'Apetit', domain: 'apetitonline.cz' },
-  { name: 'Lidl Kuchyně', domain: 'lidl-kuchyne.cz' },
   { name: 'Kdekoliv na webu' },
 ];
 

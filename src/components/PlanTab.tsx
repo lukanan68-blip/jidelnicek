@@ -29,7 +29,9 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
   const total = plan ? planCost(plan, pf) : 0;
   const baseTotal = plan ? planCost(plan, { ...pf, eff: pf.base }) : 0;
   const saved = baseTotal - total;
-  const over = plan ? total > plan.settings.budget + 0.5 : false;
+  const hasBudget = plan ? plan.settings.useBudget !== false : true;
+  const hasDate = plan ? plan.settings.useDate !== false : true;
+  const over = plan && hasBudget ? total > plan.settings.budget + 0.5 : false;
   const anySlot = SLOT_ORDER.some((s) => settings.slots[s]);
   const anyDuration = settings.duration.short || settings.duration.long;
   const hasMains = settings.slots.lunch || settings.slots.dinner;
@@ -52,25 +54,47 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
               ))}
             </select>
           </label>
-          <label>
-            Rozpočet pro 2 lidi (Kč)
-            <input
-              type="number"
-              inputMode="numeric"
-              min={0}
-              step={10}
-              value={settings.budget}
-              onChange={(e) => setSettings((s) => ({ ...s, budget: Math.max(0, Number(e.target.value)) }))}
-            />
-          </label>
-          <label>
-            Začátek
-            <input
-              type="date"
-              value={settings.startDate}
-              onChange={(e) => e.target.value && setSettings((s) => ({ ...s, startDate: e.target.value }))}
-            />
-          </label>
+          <div className="field">
+            <label>
+              Rozpočet pro 2 lidi (Kč)
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={10}
+                disabled={!settings.useBudget}
+                value={settings.budget}
+                onChange={(e) => setSettings((s) => ({ ...s, budget: Math.max(0, Number(e.target.value)) }))}
+              />
+            </label>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={!settings.useBudget}
+                onChange={(e) => setSettings((s) => ({ ...s, useBudget: !e.target.checked }))}
+              />
+              Bez rozpočtu
+            </label>
+          </div>
+          <div className="field">
+            <label>
+              Začátek
+              <input
+                type="date"
+                disabled={!settings.useDate}
+                value={settings.startDate}
+                onChange={(e) => e.target.value && setSettings((s) => ({ ...s, startDate: e.target.value }))}
+              />
+            </label>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={!settings.useDate}
+                onChange={(e) => setSettings((s) => ({ ...s, useDate: !e.target.checked }))}
+              />
+              Bez data
+            </label>
+          </div>
         </div>
 
         <fieldset>
@@ -109,6 +133,18 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
           <span>
             Vařit dvojitě
             <small> – večeře se uvaří na 2 dny a druhý den je z ní oběd</small>
+          </span>
+        </label>
+
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={settings.noMeat}
+            onChange={(e) => setSettings((s) => ({ ...s, noMeat: e.target.checked }))}
+          />
+          <span>
+            Bez masa
+            <small> – i bez ryb a šunky, vejce, sýry a luštěniny zůstávají</small>
           </span>
         </label>
 
@@ -167,9 +203,14 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
         <>
           <section className={`card summary ${over ? 'warn' : 'ok'}`} role="status">
             <div className="big">
-              Odhad: {fmtKc(total)} <span>z {fmtKc(plan.settings.budget)}</span>
+              Odhad: {fmtKc(total)} {hasBudget && <span>z {fmtKc(plan.settings.budget)}</span>}
             </div>
-            {over ? (
+            {!hasBudget ? (
+              <p>
+                Bez omezení rozpočtu.
+                {saved > 1 && <> Slevy z letáků ušetří asi {fmtKc(saved)}.</>}
+              </p>
+            ) : over ? (
               <p>
                 Za tuhle částku to nevyjde. Nejlevnější plán, který jsem našel, stojí asi {fmtKc(plan.cheapestCost)}.
                 Zvedni rozpočet, ubaluj počet jídel (třeba bez snídaní) nebo zadej slevy z letáků.
@@ -193,7 +234,7 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
 
           {plan.days.map((day, di) => (
             <section key={day.date} className="card">
-              <h3 className="cap">{formatDay(day.date)}</h3>
+              <h3 className="cap">{hasDate ? formatDay(day.date) : `Den ${di + 1}`}</h3>
               <div className="meals">
                 {day.meals.map((meal, mi) => (
                   <MealCard
@@ -321,6 +362,14 @@ function MealCard({ plan, dayIdx, date, meal, history, setHistory, pf, today, on
         </button>
         {!meal.leftover && <button onClick={onSwap}>Vyměnit</button>}
       </div>
+      {recipe.source && (
+        <p className="source">
+          Recept z webu{' '}
+          <a href={recipe.source.url} target="_blank" rel="noreferrer">
+            {recipe.source.site}
+          </a>
+        </p>
+      )}
       <details className="sites">
         <summary>Najít recept na webu</summary>
         <div className="site-links">

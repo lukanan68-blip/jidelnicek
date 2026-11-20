@@ -1,13 +1,17 @@
 import { describe, expect, it } from 'vitest';
+import { MEAT_IDS } from '../data/ingredients';
 import { HOUR, RECIPE_MAP, totalMin } from '../data/recipes';
-import { QUICK_MAX, buildShopping, generatePlan, makePriceFns, planCost, swapMeal, type PlanInput } from './planner';
+import { QUICK_MAX, buildShopping, generatePlan, makePriceFns, mealIngredients, planCost, swapMeal, type PlanInput } from './planner';
 import type { Settings } from './types';
 
 const settings: Settings = {
   days: 3,
   budget: 1000,
+  useBudget: true,
+  useDate: true,
   slots: { breakfast: true, lunch: true, dinner: true },
   quick: false,
+  noMeat: false,
   duration: { short: true, long: true },
   batch: false,
   startDate: '2026-11-11',
@@ -38,8 +42,11 @@ describe('plánovač', () => {
   it('točí přílohy za sebou', () => {
     const p = generatePlan(base({}, { days: 5, slots: { breakfast: false, lunch: true, dinner: true } }));
     const sides = sidesOf(p);
-    for (let i = 1; i < sides.length; i++) expect(sides[i]).not.toBe(sides[i - 1]);
-    expect(new Set(sides).size).toBeGreaterThanOrEqual(5);
+    // jídla bez přílohy (undefined) se neporovnávají, jen skutečné přílohy za sebou
+    for (let i = 1; i < sides.length; i++) {
+      if (sides[i] && sides[i - 1]) expect(sides[i]).not.toBe(sides[i - 1]);
+    }
+    expect(new Set(sides.filter(Boolean)).size).toBeGreaterThanOrEqual(4);
   });
 
   it('vyhne se příloze, kterou jsi jedl včera', () => {
@@ -94,6 +101,26 @@ describe('plánovač', () => {
   it('bez zaškrtnuté délky plán hlásí chybějící jídla', () => {
     const p = generatePlan(base({}, { days: 2, duration: { short: false, long: false } }));
     expect(p.missing).toBe(4);
+  });
+
+  it('bez rozpočtu se plánuje bez limitu a nic nechybí', () => {
+    const free = generatePlan(base({}, { budget: 1, useBudget: false }));
+    const rich = generatePlan(base({}, { budget: 100000 }));
+    expect(free.missing).toBe(0);
+    expect(free.days.flatMap((d) => d.meals.map((m) => m.recipeId))).toEqual(
+      rich.days.flatMap((d) => d.meals.map((m) => m.recipeId)),
+    );
+  });
+
+  it('bez masa nejsou v plánu žádné maso ani ryby, ani u snídaní, a nic nechybí', () => {
+    for (const seed of [1, 2, 3]) {
+      const p = generatePlan(base({ seed }, { days: 7, noMeat: true }));
+      expect(p.missing).toBe(0);
+      for (const m of p.days.flatMap((d) => d.meals)) {
+        for (const [id] of mealIngredients(RECIPE_MAP[m.recipeId], m.sideId)) expect(MEAT_IDS.has(id), `${m.recipeId}: ${id}`).toBe(false);
+      }
+      expect(buildShopping(p, makePriceFns({}, [], '2026-11-20')).some((r) => MEAT_IDS.has(r.id))).toBe(false);
+    }
   });
 
   it('rychlý režim bere jen rychlá jídla', () => {

@@ -536,3 +536,22 @@ details:not([open]) > .group-title::before {
 .leaflet .log small {
   display: block;
 }
+
+.field {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+.field label.check {
+  margin: 0;
+  min-height: 32px;
+  align-items: center;
+}
+input:disabled {
+  opacity: 0.5;
+}
+
+.source {
+  margin: 4px 0 0;
+  font-size: 0.9rem;
+}

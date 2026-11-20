@@ -31,6 +31,8 @@ export const INGREDIENTS: Ingredient[] = [
   { id: 'kureci-prsa', name: 'Kuřecí prsa', unit: 'kg', price: 190, kind: 'protein' },
   { id: 'kureci-stehna', name: 'Kuřecí stehna', unit: 'kg', price: 95, kind: 'protein' },
   { id: 'kure-cele', name: 'Kuře celé', unit: 'kg', price: 85, kind: 'protein' },
+  { id: 'hoveze', name: 'Hovězí maso', unit: 'kg', price: 300, kind: 'protein' },
+  { id: 'bucek', name: 'Vepřový bůček / slanina', unit: 'kg', price: 150, kind: 'protein' },
   { id: 'mlete', name: 'Mleté maso (mix)', unit: 'kg', price: 170, kind: 'protein' },
   { id: 'veprova-plec', name: 'Vepřová plec', unit: 'kg', price: 165, kind: 'protein' },
   { id: 'klobasa', name: 'Klobása / párky', unit: 'kg', price: 160, kind: 'protein' },
@@ -49,9 +51,13 @@ export const INGREDIENTS: Ingredient[] = [
   { id: 'jogurt', name: 'Bílý jogurt (kelímek)', unit: 'ks', price: 12, kind: 'dairy' },
   { id: 'smetana', name: 'Smetana na vaření (200 ml)', unit: 'ks', price: 20, kind: 'dairy' },
   { id: 'syr', name: 'Sýr (eidam)', unit: 'kg', price: 190, kind: 'dairy' },
+  { id: 'zakysana-smetana', name: 'Zakysaná smetana (190 g)', unit: 'ks', price: 22, kind: 'dairy' },
 
   // zelenina, ovoce, ostatní
   { id: 'cibule', name: 'Cibule', unit: 'kg', price: 25, kind: 'veg' },
+  { id: 'cuketa', name: 'Cuketa', unit: 'kg', price: 50, kind: 'veg' },
+  { id: 'porek', name: 'Pórek', unit: 'kg', price: 60, kind: 'veg' },
+  { id: 'celer', name: 'Celer', unit: 'kg', price: 45, kind: 'veg' },
   { id: 'cesnek', name: 'Česnek (hlavička)', unit: 'ks', price: 8, kind: 'veg' },
   { id: 'mrkev', name: 'Mrkev', unit: 'kg', price: 28, kind: 'veg' },
   { id: 'paprika', name: 'Paprika', unit: 'kg', price: 95, kind: 'veg' },
@@ -68,6 +74,7 @@ export const INGREDIENTS: Ingredient[] = [
   { id: 'salat', name: 'Salát (hlávkový)', unit: 'ks', price: 28, kind: 'veg' },
   { id: 'banany', name: 'Banány', unit: 'kg', price: 40, kind: 'veg' },
   { id: 'jablka', name: 'Jablka', unit: 'kg', price: 40, kind: 'veg' },
+  { id: 'protlak', name: 'Rajčatový protlak (140 g)', unit: 'ks', price: 22, kind: 'other' },
   { id: 'strouhanka', name: 'Strouhanka', unit: 'kg', price: 45, kind: 'other' },
   { id: 'mouka', name: 'Mouka', unit: 'kg', price: 22, kind: 'other' },
 ];
@@ -87,6 +94,21 @@ export const UNIT_LABEL: Record<Unit, string> = { kg: 'kg', l: 'l', ks: 'ks' };
 /** Suroviny, které jsou skoro v každém jídle. Zapisují se do historie, ale plánovač je při střídání neřeší. */
 export const STAPLE_IDS = new Set(['cibule', 'cesnek']);
 
+/** Maso a ryby. Vejce, mléčné výrobky a luštěniny se za maso nepočítají. */
+export const MEAT_IDS = new Set([
+  'kureci-prsa',
+  'kureci-stehna',
+  'kure-cele',
+  'mlete',
+  'veprova-plec',
+  'bucek',
+  'hoveze',
+  'klobasa',
+  'sunka',
+  'ryba',
+  'tunak',
+]);
+
 const FRUIT_IDS = ['banany', 'jablka'];
 
 /** Rozdělení surovin v záložce „Co jsem jedl“. */
@@ -94,7 +116,7 @@ export const HISTORY_GROUPS: { title: string; ids: string[] }[] = [
   { title: 'Přílohy', ids: INGREDIENTS.filter((i) => i.kind === 'side').map((i) => i.id) },
   {
     title: 'Maso a ryby',
-    ids: ['kureci-prsa', 'kureci-stehna', 'kure-cele', 'mlete', 'veprova-plec', 'klobasa', 'sunka', 'ryba', 'tunak'],
+    ids: ['kureci-prsa', 'kureci-stehna', 'kure-cele', 'mlete', 'veprova-plec', 'bucek', 'hoveze', 'klobasa', 'sunka', 'ryba', 'tunak'],
   },
   { title: 'Vejce a luštěniny', ids: ['vejce', 'cocka', 'cervena-cocka', 'cizrna', 'fazole'] },
   {

@@ -1,5 +1,5 @@
 import { INGREDIENT_MAP, STAPLE_IDS } from '../data/ingredients';
-import { RECIPES, RECIPE_MAP, matchesDuration, type DurationFilter, type MealType, type Recipe } from '../data/recipes';
+import { RECIPES, RECIPE_MAP, hasMeat, matchesDuration, type DurationFilter, type MealType, type Recipe } from '../data/recipes';
 import { addDays, daysBetween, uid } from './format';
 import {
   SLOT_ORDER,
@@ -138,6 +138,7 @@ interface Pick {
   batchOnly: boolean;
   quick: boolean;
   duration?: DurationFilter;
+  noMeat?: boolean;
   lambda: number;
   used: Set<string>;
   exclude?: string;
@@ -161,6 +162,7 @@ function pickBest(p: Pick): Cand | undefined {
       r.id !== p.exclude &&
       (!p.quick || r.min <= QUICK_MAX) &&
       matchesDuration(r, p.duration) &&
+      (!p.noMeat || !hasMeat(r)) &&
       (!p.batchOnly || !r.noBatch),
   );
   const fresh = pool.filter((r) => !p.used.has(r.id));
@@ -239,6 +241,7 @@ function run(input: PlanInput, lambda: number): { days: PlanDay[]; total: number
         batchOnly: batchPair,
         quick: settings.quick,
         duration: settings.duration,
+        noMeat: settings.noMeat,
         lambda,
         used,
         dist,
@@ -269,10 +272,12 @@ export function generatePlan(input: PlanInput): Plan {
   let chosen: Run | undefined;
   let cheapest: Run | undefined;
 
+  const budgetLimit = input.settings.useBudget === false ? Infinity : input.settings.budget;
+
   for (const lambda of LAMBDAS) {
     const r = run(input, lambda);
     if (!cheapest || r.total < cheapest.total) cheapest = r;
-    if (r.total <= input.settings.budget) {
+    if (r.total <= budgetLimit) {
       chosen = r;
       break;
     }
@@ -334,6 +339,7 @@ export function swapMeal(
     batchOnly: !!target.doubled,
     quick: plan.settings.quick,
     duration: plan.settings.duration,
+    noMeat: plan.settings.noMeat,
     lambda: 0,
     used,
     exclude: target.recipeId,
