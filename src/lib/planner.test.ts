@@ -459,3 +459,20 @@ describe('obtížnost', () => {
     expect(levels).toEqual(new Set(['snadné', 'střední', 'náročné']));
   });
 });
+
+describe('nedávno navržená jídla', () => {
+  it('při dalším návrhu se jídla z minulého návrhu raději neopakují', () => {
+    let overlapWith = 0;
+    let overlapWithout = 0;
+    for (let seed = 1; seed <= 8; seed++) {
+      const first = generatePlan(base({ seed }, { days: 3 }));
+      const ids = (p: typeof first) => p.days.flatMap((d) => d.meals.map((m) => m.recipeId));
+      const shown = first.days.flatMap((d) => d.meals.flatMap((m) => [m.recipeId, ...(m.alts ?? []).map((a) => a.recipeId)]));
+      const a = new Set(ids(first));
+      overlapWith += ids(generatePlan(base({ seed: seed + 100, recent: shown }, { days: 3 }))).filter((i) => a.has(i)).length;
+      overlapWithout += ids(generatePlan(base({ seed: seed + 100 }, { days: 3 }))).filter((i) => a.has(i)).length;
+    }
+    expect(overlapWith).toBeLessThanOrEqual(overlapWithout);
+    expect(overlapWith).toBeLessThanOrEqual(8);
+  });
+});

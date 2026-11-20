@@ -56,6 +56,8 @@ export default function App() {
   // kde nakupuji (prázdné = nejlevněji ve víc obchodech) a co mám doma
   const [shopStore, setShopStore] = useStored<string>('jid.shopStore', '');
   const [have, setHave] = useStored<string[]>('jid.have', [], migrateIds);
+  // jídla z posledních návrhů, aby se při dalším návrhu nenabízelo pořád totéž
+  const [recent, setRecent] = useStored<string[]>('jid.recent', []);
 
   // slevy z letáků (součást aplikace) + ty, které si zadáš ručně
   const allDiscounts = useMemo(() => [...leafletDiscounts(), ...discounts], [discounts]);
@@ -84,16 +86,20 @@ export default function App() {
 
   function onGenerate() {
     const seed = Math.floor(Math.random() * 1e9);
-    setPlan(generatePlan({
-        settings: effectiveSettings,
-        history,
-        discounts: allDiscounts,
-        prices,
-        today: effectiveSettings.startDate,
-        seed,
-        store: shopStore || undefined,
-        have,
-      }));
+    const next = generatePlan({
+      settings: effectiveSettings,
+      history,
+      discounts: allDiscounts,
+      prices,
+      today: effectiveSettings.startDate,
+      seed,
+      store: shopStore || undefined,
+      have,
+      recent,
+    });
+    setPlan(next);
+    const shown = next.days.flatMap((d) => d.meals.flatMap((m) => [m.recipeId, ...(m.alts ?? []).map((a) => a.recipeId)]));
+    setRecent([...new Set([...shown, ...recent])].slice(0, 90));
     setChecked({});
   }
 

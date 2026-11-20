@@ -181,6 +181,8 @@ interface Pick {
   duration?: DurationFilter;
   noMeat?: boolean;
   sources?: string[];
+  /** Jídla, která už se nedávno navrhovala. Dostanou malou penalizaci, aby se nenabízelo pořád totéž. */
+  recent?: Set<string>;
   lambda: number;
   used: Set<string>;
   exclude?: Set<string>;
@@ -200,7 +202,10 @@ interface Cand {
 }
 
 /** Jak moc se pořadí jídel míchá náhodou (body skóre), aby se při každém návrhu neukazovalo pořád totéž. */
-const RANDOMNESS = 24;
+const RANDOMNESS = 30;
+
+/** Penalizace za jídlo, které se nedávno navrhovalo. */
+const RECENT_PENALTY = 28;
 
 /** Kolik dalších jídel se u každého chodu nabídne k výběru. */
 export const ALT_COUNT = 3;
@@ -244,6 +249,7 @@ function rankCandidates(p: Pick): Cand[] {
         }
         sc += Math.min(haveBonus, 40);
         sc -= p.lambda * cost;
+        if (p.recent?.has(recipe.id)) sc -= RECENT_PENALTY;
         sc += p.rnd() * RANDOMNESS;
         const prev = bestPerRecipe.get(recipe.id);
         if (!prev || sc > prev.score) bestPerRecipe.set(recipe.id, { recipe, sideId, cost, score: sc });
@@ -276,6 +282,8 @@ export interface PlanInput {
   store?: string;
   /** Suroviny, které jsou doma (neplatí se). */
   have?: string[];
+  /** Jídla z posledních návrhů, která se teď raději nevolí. */
+  recent?: string[];
 }
 
 function run(input: PlanInput, lambda: number): { days: PlanDay[]; total: number; missing: number } {
@@ -283,6 +291,7 @@ function run(input: PlanInput, lambda: number): { days: PlanDay[]; total: number
   const pf = makePriceFns(input.prices, input.discounts, input.today, { store: input.store, have: input.have });
   const last = buildLast(input.history);
   const rnd = mulberry32(input.seed);
+  const recentSet = new Set(input.recent ?? []);
   const used = new Set<string>();
   const leftovers = new Map<string, PlanMeal>(); // klíč „den:chod“
   const days: PlanDay[] = [];
@@ -324,6 +333,7 @@ function run(input: PlanInput, lambda: number): { days: PlanDay[]; total: number
         duration: settings.duration,
         noMeat: settings.noMeat,
         sources: settings.sources,
+        recent: recentSet,
         lambda,
         used,
         want: 1 + ALT_COUNT,

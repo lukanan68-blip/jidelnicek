@@ -1091,3 +1091,18 @@ body::after {
   font-size: 0.85em;
   color: var(--muted);
 }
+
+/* název jídla hned pod štítkem Snídaně / Oběd / Večeře, výrazně a větší */
+.meal-title {
+  margin: 2px 0 10px;
+  font-size: 1.45rem;
+  line-height: 1.2;
+  font-weight: 800;
+  color: var(--accent-dark);
+  letter-spacing: -0.01em;
+}
+.meal-title .diff {
+  font-size: 0.6em;
+  font-weight: 500;
+  white-space: nowrap;
+}

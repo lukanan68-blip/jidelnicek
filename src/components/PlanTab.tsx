@@ -495,6 +495,10 @@ function MealCard({ plan, dayIdx, date, meal, history, setHistory, pf, pfAll, to
         </span>
         <span className="cost">{meal.leftover ? (meal.slot === 'breakfast' ? 'stejná' : 'zbytky') : fmtKc(cost)}</span>
       </div>
+      <h4 className="meal-title">
+        {recipe.name}
+        <span className="diff"> ({difficulty(recipe)})</span>
+      </h4>
       {recipe.photo && (
         <figure className="photo">
           <img
@@ -551,9 +555,6 @@ function MealCard({ plan, dayIdx, date, meal, history, setHistory, pf, pfAll, to
         <span className="dish">{dish}</span>
         <span className="parts">{plateParts(recipe, meal.sideId).filter((x) => x !== dish).join(' ')}</span>
       </div>
-      <h4>
-        {recipe.name} <span className="diff">({difficulty(recipe)})</span>
-      </h4>
       <p className="meta">
         {meal.leftover
           ? meal.slot === 'breakfast'
