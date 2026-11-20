@@ -188,6 +188,18 @@ label.check input {
 label.check small {
   color: var(--muted);
 }
+.chips.sources {
+  gap: 2px 12px;
+}
+.chips.sources label.check {
+  flex: 1 1 calc(50% - 12px);
+  min-width: 150px;
+  margin-bottom: 4px;
+}
+.chips.sources small.count {
+  display: block;
+  font-size: 0.82rem;
+}
 
 button {
   font: inherit;
@@ -867,4 +879,51 @@ input:disabled {
 }
 .store-name {
   font-weight: 700;
+}
+
+.have-picker summary {
+  display: grid;
+  gap: 2px;
+  cursor: pointer;
+  list-style: none;
+  min-height: 44px;
+}
+.have-picker summary::-webkit-details-marker {
+  display: none;
+}
+.have-picker summary h2 {
+  margin: 0;
+}
+.have-sum {
+  font-size: 1.1rem;
+  letter-spacing: 0.08em;
+}
+.have-picker .hint {
+  margin: 8px 0;
+}
+.have-search {
+  margin: 4px 0 8px;
+}
+.have-group {
+  margin: 0 0 6px;
+}
+.have-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 0.92rem;
+}
+.chip.on {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-dark);
+  font-weight: 600;
+}
+.have-summary p {
+  margin: 2px 0;
 }

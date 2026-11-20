@@ -1,18 +1,20 @@
 import { useMemo } from 'react';
 import { INGREDIENT_MAP, STAPLE_IDS, UNIT_LABEL } from '../data/ingredients';
 import { dishIcon, iconOf, plateParts } from '../data/icons';
-import { FAST, HOUR, RECIPE_MAP, RECIPE_SITES, recipeSearchUrl } from '../data/recipes';
-import { agoLabel, daysBetween, fmtAmount, fmtKc, fmtKcFine, fmtPrice, formatDay, formatShort, inStore, uid } from '../lib/format';
+import { FAST, HOUR, RECIPES, RECIPE_MAP, RECIPE_SITES, SOURCE_OPTIONS, recipeSearchUrl, sourceOf } from '../data/recipes';
+import { agoLabel, daysBetween, dnyLabel, fmtAmount, fmtKc, fmtKcFine, fmtPrice, formatDay, formatShort, inStore, uid } from '../lib/format';
 import {
   amountCost,
   buildLast,
   mealIngredients,
+  mealMult,
   planCost,
   mealPricesByStore,
   planMealCost,
   whereToBuy,
   type PriceFns,
 } from '../lib/planner';
+import { HavePicker } from './HavePicker';
 import { PriceLines } from './PriceLines';
 import { StoreBadge } from './StoreBadge';
 import { StoreSelect } from './StoreSelect';
@@ -32,13 +34,15 @@ interface Props {
   setShopStore: (store: string) => void;
   storesWithDeals: string[];
   toggleHave: (id: string) => void;
+  have: string[];
+  clearHave: () => void;
   onGenerate: () => void;
   onChoose: (dayIdx: number, mealIdx: number, altIdx: number) => void;
   onMore: (dayIdx: number, mealIdx: number) => void;
   goTo: (tab: 'history') => void;
 }
 
-export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, pfAll, today, shopStore, setShopStore, storesWithDeals, toggleHave, onGenerate, onChoose, onMore, goTo }: Props) {
+export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, pfAll, today, shopStore, setShopStore, storesWithDeals, toggleHave, have, clearHave, onGenerate, onChoose, onMore, goTo }: Props) {
   const total = plan ? planCost(plan, pf) : 0;
   const baseTotal = plan ? planCost(plan, { ...pf, eff: pf.base }) : 0;
   const saved = baseTotal - total;
@@ -48,11 +52,59 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
   const anySlot = SLOT_ORDER.some((s) => settings.slots[s]);
   const anyDuration = settings.duration.fast || settings.duration.short || settings.duration.long;
   const hasMains = settings.slots.lunch || settings.slots.dinner;
+  const sources = settings.sources ?? SOURCE_OPTIONS;
+  const noSource = sources.length === 0;
+  const sourceCount = (name: string, meal?: 'breakfast' | 'main') =>
+    RECIPES.filter((r) => sourceOf(r) === name && (!meal || r.meal === meal)).length;
+  const noBreakfastInSources = settings.slots.breakfast && !noSource && sources.every((s) => sourceCount(s, 'breakfast') === 0);
+  const toggleSource = (name: string, on: boolean) =>
+    setSettings((s) => {
+      const cur = s.sources ?? SOURCE_OPTIONS;
+      return { ...s, sources: on ? [...cur.filter((x) => x !== name), name] : cur.filter((x) => x !== name) };
+    });
+  // co z tvých zásob se v návrhu spotřebuje
+  const inPlan = new Set<string>();
+  for (const day of plan?.days ?? [])
+    for (const m of day.meals) {
+      if (m.leftover) continue;
+      for (const [id] of mealIngredients(RECIPE_MAP[m.recipeId], m.sideId)) inPlan.add(id);
+    }
+  const usedHave = have.filter((id) => inPlan.has(id));
+  const unusedHave = have.filter((id) => !inPlan.has(id));
 
   return (
     <div className="stack">
+      <HavePicker have={have} toggleHave={toggleHave} clearHave={clearHave} />
+
       <section className="card">
         <h2>Zadání</h2>
+        <fieldset>
+          <legend>Odkud mají být recepty</legend>
+          <div className="chips sources">
+            {SOURCE_OPTIONS.map((name) => (
+              <label className="check" key={name}>
+                <input type="checkbox" checked={sources.includes(name)} onChange={(e) => toggleSource(name, e.target.checked)} />
+                <span>
+                  {name}
+                  <small className="count">{sourceCount(name)} receptů</small>
+                </span>
+              </label>
+            ))}
+          </div>
+          <div className="row">
+            <button className="mini" onClick={() => setSettings((s) => ({ ...s, sources: SOURCE_OPTIONS }))}>
+              Všechny
+            </button>
+          </div>
+          {noSource && (
+            <p role="alert" className="error">
+              Vyber aspoň jeden zdroj, jinak nemám z čeho vybírat.
+            </p>
+          )}
+          {noBreakfastInSources && (
+            <p className="hint">Z vybraných zdrojů nejsou snídaně, ty se vezmou z ostatních.</p>
+          )}
+        </fieldset>
         <div className="grid2">
           <label>
             Počet dní
@@ -131,17 +183,49 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
           </div>
         </fieldset>
 
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={settings.batch}
-            onChange={(e) => setSettings((s) => ({ ...s, batch: e.target.checked }))}
-          />
-          <span>
-            Vařit dvojitě
-            <small> – večeře se uvaří na 2 dny a druhý den je z ní oběd</small>
-          </span>
-        </label>
+        {(settings.slots.lunch || settings.slots.dinner) && (
+          <fieldset>
+            <legend>Vařit stejné jídlo na víc dní</legend>
+            <div className="grid2">
+              {(['lunch', 'dinner'] as const)
+                .filter((slot) => settings.slots[slot])
+                .map((slot) => (
+                  <label key={slot}>
+                    {slot === 'lunch' ? 'Stejný oběd na' : 'Stejná večeře na'}
+                    <select
+                      value={settings.repeat[slot]}
+                      onChange={(e) =>
+                        setSettings((s) => ({
+                          ...s,
+                          repeat: { ...s.repeat, [slot]: Number(e.target.value) },
+                          batch: Number(e.target.value) > 1 ? false : s.batch,
+                        }))
+                      }
+                    >
+                      {[1, 2, 3, 4].map((n) => (
+                        <option key={n} value={n}>
+                          {n === 1 ? 'každý den jiné jídlo' : `${n} ${dnyLabel(n)}`}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ))}
+            </div>
+            <p className="hint">Jídlo se uvaří jednou a další dny se jí zbytky. Suroviny se nakoupí na všechny dny.</p>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={settings.batch}
+                disabled={settings.repeat.lunch > 1 || settings.repeat.dinner > 1}
+                onChange={(e) => setSettings((s) => ({ ...s, batch: e.target.checked }))}
+              />
+              <span>
+                Večeře je zároveň zítřejší oběd
+                <small> – večeře se uvaří na 2 dny a druhý den je z ní oběd</small>
+              </span>
+            </label>
+          </fieldset>
+        )}
 
         <label className="check">
           <input
@@ -202,7 +286,7 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
         )}
 
         <div className="row">
-          <button className="primary" onClick={onGenerate} disabled={!anySlot || (hasMains && !anyDuration)}>
+          <button className="primary" onClick={onGenerate} disabled={!anySlot || noSource || (hasMains && !anyDuration)}>
             {plan ? 'Navrhnout znovu' : 'Navrhnout jídelníček'}
           </button>
         </div>
@@ -240,6 +324,21 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
               </p>
             )}
           </section>
+
+          {have.length > 0 && (
+            <section className="card have-summary">
+              <p>
+                <b>Z tvých zásob využito:</b>{' '}
+                {usedHave.length > 0 ? usedHave.map((id) => `${iconOf(id)} ${INGREDIENT_MAP[id].name.replace(/\s*\(.*\)$/, '')}`).join(', ') : 'nic'}
+              </p>
+              {unusedHave.length > 0 && (
+                <p className="muted">
+                  Nevyužito: {unusedHave.map((id) => `${iconOf(id)} ${INGREDIENT_MAP[id].name.replace(/\s*\(.*\)$/, '')}`).join(', ')}.
+                  Zkus Navrhnout znovu nebo Další možnosti u jídel.
+                </p>
+              )}
+            </section>
+          )}
 
           {!!plan.missing && (
             <section className="card summary warn" role="alert">
@@ -302,7 +401,7 @@ function MealCard({ plan, dayIdx, date, meal, history, setHistory, pf, pfAll, to
   const key = `${plan.id}:${dayIdx}:${meal.slot}`;
   const eaten = history.some((h) => h.source === key);
   const last = useMemo(() => buildLast(history, key), [history, key]);
-  const mult = meal.doubled ? 2 : 1;
+  const mult = mealMult(meal);
   const ings = mealIngredients(recipe, meal.sideId, mult);
   const cost = planMealCost(meal, pf);
   const where = meal.leftover ? null : whereToBuy(meal.recipeId, meal.sideId, mult, pf);
@@ -361,8 +460,8 @@ function MealCard({ plan, dayIdx, date, meal, history, setHistory, pf, pfAll, to
       <h4>{recipe.name}</h4>
       <p className="meta">
         {meal.leftover
-          ? 'Zbytky z včerejší večeře, nevaří se.'
-          : `⏱ ${recipe.min} min${recipe.extra ? ` + ${recipe.extra} min samo` : ''}${meal.doubled ? ' · vaříš dvojitou porci' : ''}`}
+          ? 'Stejné jídlo jako dřív, jíš zbytky, nevaří se.'
+          : `⏱ ${recipe.min} min${recipe.extra ? ` + ${recipe.extra} min samo` : ''}${mult > 1 ? ` · uvaříš najednou na ${mult} ${dnyLabel(mult)}` : ''}`}
       </p>
 
       {tracked.length > 0 && (
@@ -464,7 +563,7 @@ function MealCard({ plan, dayIdx, date, meal, history, setHistory, pf, pfAll, to
           </ul>
         </div>
       )}
-      {meal.leftover && <p className="where">Suroviny jsou nakoupené u večeře.</p>}
+      {meal.leftover && <p className="where">Suroviny jsou nakoupené u prvního dne, kdy se jídlo vaří.</p>}
 
       <details>
         <summary>Suroviny pro 2 lidi</summary>
@@ -518,7 +617,7 @@ function MealCard({ plan, dayIdx, date, meal, history, setHistory, pf, pfAll, to
           <ul>
             {meal.alts.map((a, ai) => {
               const r = RECIPE_MAP[a.recipeId];
-              const altMeal: PlanMeal = { slot: meal.slot, recipeId: a.recipeId, sideId: a.sideId, doubled: meal.doubled };
+              const altMeal: PlanMeal = { slot: meal.slot, recipeId: a.recipeId, sideId: a.sideId, doubled: meal.doubled, batchDays: meal.batchDays };
               const w = whereToBuy(a.recipeId, a.sideId, mult, pf);
               const ap = mealPricesByStore(a.recipeId, a.sideId, mult, pfAll);
               return (

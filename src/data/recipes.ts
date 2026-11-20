@@ -1,5 +1,6 @@
 import { MEAT_IDS } from './ingredients';
 import { OWN_PHOTOS } from './photos-own';
+import { HEALTH_RECIPES } from './recipes-health';
 import { WEB_RECIPES } from './recipes-web';
 
 export type MealType = 'breakfast' | 'main';
@@ -138,6 +139,7 @@ const OWN_RECIPES: Recipe[] = [
 export const RECIPES: Recipe[] = [
   ...OWN_RECIPES.map((r) => (OWN_PHOTOS[r.id] ? { ...r, photo: OWN_PHOTOS[r.id] } : r)),
   ...WEB_RECIPES,
+  ...HEALTH_RECIPES,
 ];
 
 export const RECIPE_MAP: Record<string, Recipe> = Object.fromEntries(RECIPES.map((r) => [r.id, r]));
@@ -148,8 +150,20 @@ export const RECIPE_SITES: { name: string; domain?: string }[] = [
   { name: 'Recepty.cz', domain: 'recepty.cz' },
   { name: 'Kuchařka pro dceru', domain: 'kucharkaprodceru.cz' },
   { name: 'Apetit', domain: 'apetitonline.cz' },
+  { name: 'Vilgain', domain: 'vilgain.cz' },
+  { name: 'Mandimu (Jíme zdravě)', domain: 'mandimu.cz' },
   { name: 'Kdekoliv na webu' },
 ];
+
+/** Odkud recepty jsou. Vlastní recepty jsou bez odkazu na web. */
+export const OWN_SOURCE = 'Vlastní recepty';
+export const SOURCE_OPTIONS: string[] = [OWN_SOURCE, 'Toprecepty', 'Recepty.cz', 'Apetit', 'Kuchařka pro dceru', 'Vilgain', 'Mandimu'].filter((n) =>
+  RECIPES.some((r) => sourceOf(r) === n),
+);
+
+export function sourceOf(r: Recipe): string {
+  return r.source?.site ?? OWN_SOURCE;
+}
 
 export function recipeSearchUrl(recipe: Recipe, domain?: string): string {
   const q = `${domain ? `site:${domain} ` : ''}${recipe.search ?? recipe.name}`;

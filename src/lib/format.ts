@@ -95,6 +95,11 @@ export function inStore(store: string): string {
   return forms[store] ?? `v ${store}`;
 }
 
+/** „den“, „dny“, „dní“ podle počtu. */
+export function dnyLabel(n: number): string {
+  return n === 1 ? 'den' : n >= 2 && n <= 4 ? 'dny' : 'dní';
+}
+
 export function uid(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 }

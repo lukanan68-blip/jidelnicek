@@ -60,6 +60,8 @@ export const INGREDIENT_ICON: Record<string, string> = {
   salat: '🥗',
   banany: '🍌',
   jablka: '🍎',
+  bataty: '🍠',
+  avokado: '🥑',
   // ostatní
   protlak: '🥫',
   strouhanka: '🍞',

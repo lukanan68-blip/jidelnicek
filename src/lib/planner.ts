@@ -1,8 +1,9 @@
 import { INGREDIENT_MAP, STAPLE_IDS } from '../data/ingredients';
-import { RECIPES, RECIPE_MAP, hasMeat, matchesDuration, type DurationFilter, type MealType, type Recipe } from '../data/recipes';
+import { RECIPES, RECIPE_MAP, hasMeat, matchesDuration, sourceOf, type DurationFilter, type MealType, type Recipe } from '../data/recipes';
 import { addDays, daysBetween, uid } from './format';
 import {
   SLOT_ORDER,
+  type Slot,
   type Discount,
   type HistoryEntry,
   type Plan,
@@ -100,9 +101,14 @@ export function mealCost(
   );
 }
 
+/** Kolikrát větší množství se u jídla vaří (na kolik dní). */
+export function mealMult(m: PlanMeal): number {
+  return m.batchDays ?? (m.doubled ? 2 : 1);
+}
+
 export function planMealCost(meal: PlanMeal, pf: PriceFns): number {
   if (meal.leftover) return 0;
-  return mealCost(RECIPE_MAP[meal.recipeId], meal.sideId, meal.doubled ? 2 : 1, pf.eff);
+  return mealCost(RECIPE_MAP[meal.recipeId], meal.sideId, mealMult(meal), pf.eff);
 }
 
 export function planCost(plan: Plan, pf: PriceFns): number {
@@ -164,6 +170,7 @@ interface Pick {
   batchOnly: boolean;
   duration?: DurationFilter;
   noMeat?: boolean;
+  sources?: string[];
   lambda: number;
   used: Set<string>;
   exclude?: Set<string>;
@@ -182,18 +189,22 @@ interface Cand {
   score: number;
 }
 
+/** Jak moc se pořadí jídel míchá náhodou (body skóre), aby se při každém návrhu neukazovalo pořád totéž. */
+const RANDOMNESS = 24;
+
 /** Kolik dalších jídel se u každého chodu nabídne k výběru. */
 export const ALT_COUNT = 3;
 
 function rankCandidates(p: Pick): Cand[] {
-  const pool = RECIPES.filter(
-    (r) =>
-      r.meal === p.type &&
-      !p.exclude?.has(r.id) &&
-      matchesDuration(r, p.duration) &&
-      (!p.noMeat || !hasMeat(r)) &&
-      (!p.batchOnly || !r.noBatch),
-  );
+  const allowed = (r: Recipe) =>
+    r.meal === p.type &&
+    !p.exclude?.has(r.id) &&
+    matchesDuration(r, p.duration) &&
+    (!p.noMeat || !hasMeat(r)) &&
+    (!p.batchOnly || !r.noBatch);
+  const fromSources = p.sources && p.sources.length ? RECIPES.filter((r) => allowed(r) && p.sources!.includes(sourceOf(r))) : null;
+  // z vybraných webů nic nevyhovuje (třeba snídaně) = vezmou se recepty odkudkoliv
+  const pool = fromSources && fromSources.length > 0 ? fromSources : RECIPES.filter(allowed);
 
   const score = (recipes: Recipe[]): Cand[] => {
     const bestPerRecipe = new Map<string, Cand>();
@@ -214,8 +225,16 @@ function rankCandidates(p: Pick): Cand[] {
           savings += amountCost(id, amount, p.pf.base(id)) - eff;
         }
         sc += Math.min(savings * 0.6, 30);
+        // suroviny, které už mám doma: raději jídla, ve kterých se spotřebují
+        let haveBonus = 0;
+        for (const [id] of ings) {
+          if (!p.pf.has(id) || STAPLE_IDS.has(id)) continue;
+          const k = INGREDIENT_MAP[id].kind;
+          haveBonus += k === 'protein' ? 14 : k === 'side' ? 10 : k === 'veg' ? 5 : 2;
+        }
+        sc += Math.min(haveBonus, 40);
         sc -= p.lambda * cost;
-        sc += p.rnd() * 6;
+        sc += p.rnd() * RANDOMNESS;
         const prev = bestPerRecipe.get(recipe.id);
         if (!prev || sc > prev.score) bestPerRecipe.set(recipe.id, { recipe, sideId, cost, score: sc });
       }
@@ -255,10 +274,13 @@ function run(input: PlanInput, lambda: number): { days: PlanDay[]; total: number
   const last = buildLast(input.history);
   const rnd = mulberry32(input.seed);
   const used = new Set<string>();
-  const leftovers = new Map<number, PlanMeal>();
+  const leftovers = new Map<string, PlanMeal>(); // klíč „den:chod“
   const days: PlanDay[] = [];
   let total = 0;
   let missing = 0;
+  const repeatOf = (slot: Slot) => (slot === 'breakfast' ? 1 : Math.max(1, Math.min(4, settings.repeat?.[slot] ?? 1)));
+  const anyRepeat = repeatOf('lunch') > 1 || repeatOf('dinner') > 1;
+  const batchOn = settings.batch && !anyRepeat;
 
   for (let d = 0; d < settings.days; d++) {
     const date = addDays(settings.startDate, d);
@@ -269,21 +291,29 @@ function run(input: PlanInput, lambda: number): { days: PlanDay[]; total: number
     for (const slot of SLOT_ORDER) {
       if (!settings.slots[slot]) continue;
 
-      const lo = slot === 'lunch' ? leftovers.get(d) : undefined;
+      const lo = leftovers.get(`${d}:${slot}`);
       if (lo) {
         meals.push(lo);
         touch(last, RECIPE_MAP[lo.recipeId], lo.sideId, date);
         continue;
       }
 
-      const batchPair =
-        settings.batch && slot === 'dinner' && settings.slots.lunch && d % 2 === 0 && d + 1 < settings.days;
+      // na kolik dní se tohle jídlo uvaří najednou
+      let cover = 1;
+      let pairLunch = false;
+      if (slot === 'dinner' && batchOn && settings.slots.lunch && d % 2 === 0 && d + 1 < settings.days) {
+        cover = 2; // večeře = zítřejší oběd
+        pairLunch = true;
+      } else if (repeatOf(slot) > 1 && d % repeatOf(slot) === 0) {
+        cover = Math.min(repeatOf(slot), settings.days - d);
+      }
       const ranked = rankCandidates({
         type: slot === 'breakfast' ? 'breakfast' : 'main',
-        mult: batchPair ? 2 : 1,
-        batchOnly: batchPair,
+        mult: cover,
+        batchOnly: cover > 1,
         duration: settings.duration,
         noMeat: settings.noMeat,
+        sources: settings.sources,
         lambda,
         used,
         want: 1 + ALT_COUNT,
@@ -299,12 +329,13 @@ function run(input: PlanInput, lambda: number): { days: PlanDay[]; total: number
       }
 
       const alts = ranked.slice(1).map((c) => ({ recipeId: c.recipe.id, sideId: c.sideId }));
-      meals.push({ slot, recipeId: best.recipe.id, sideId: best.sideId, doubled: batchPair || undefined, alts });
+      meals.push({ slot, recipeId: best.recipe.id, sideId: best.sideId, batchDays: cover > 1 ? cover : undefined, alts });
       total += best.cost;
       used.add(best.recipe.id);
       touch(last, best.recipe, best.sideId, date);
-      if (batchPair) {
-        leftovers.set(d + 1, { slot: 'lunch', recipeId: best.recipe.id, sideId: best.sideId, leftover: true });
+      for (let k = 1; k < cover; k++) {
+        const target = pairLunch ? 'lunch' : slot;
+        leftovers.set(`${d + k}:${target}`, { slot: target, recipeId: best.recipe.id, sideId: best.sideId, leftover: true });
       }
     }
     days.push({ date, meals });
@@ -338,10 +369,14 @@ export function generatePlan(input: PlanInput): Plan {
   };
 }
 
-/** Najde u dvojité večeře zbytky, které z ní jsou další den (oběd). */
-function pairIndex(plan: Plan, dayIdx: number, target: PlanMeal): number {
-  if (!target.doubled) return -1;
-  return plan.days[dayIdx + 1]?.meals.findIndex((m) => m.leftover && m.recipeId === target.recipeId) ?? -1;
+/** Najde zbytky, které z tohoto jídla budou v dalších dnech (stejné jídlo na víc dní). */
+function followers(plan: Plan, dayIdx: number, target: PlanMeal): [number, number][] {
+  const out: [number, number][] = [];
+  for (let k = 1; k < mealMult(target); k++) {
+    const mi = plan.days[dayIdx + k]?.meals.findIndex((m) => m.leftover && m.recipeId === target.recipeId) ?? -1;
+    if (mi >= 0) out.push([dayIdx + k, mi]);
+  }
+  return out;
 }
 
 /** Vybere jednu z nabízených alternativ. Původní jídlo se zařadí mezi alternativy. */
@@ -350,7 +385,7 @@ export function chooseAlternative(plan: Plan, dayIdx: number, mealIdx: number, a
   const alt = target?.alts?.[altIdx];
   if (!target || !alt || target.leftover) return plan;
 
-  const pair = pairIndex(plan, dayIdx, target);
+  const fol = followers(plan, dayIdx, target);
   const alts = [
     { recipeId: target.recipeId, sideId: target.sideId },
     ...(target.alts ?? []).filter((_, i) => i !== altIdx),
@@ -359,7 +394,7 @@ export function chooseAlternative(plan: Plan, dayIdx: number, mealIdx: number, a
     ...day,
     meals: day.meals.map((m, mi) => {
       if (di === dayIdx && mi === mealIdx) return { ...m, recipeId: alt.recipeId, sideId: alt.sideId, alts };
-      if (pair >= 0 && di === dayIdx + 1 && mi === pair) return { ...m, recipeId: alt.recipeId, sideId: alt.sideId };
+      if (fol.some(([fd, fm]) => fd === di && fm === mi)) return { ...m, recipeId: alt.recipeId, sideId: alt.sideId };
       return m;
     }),
   }));
@@ -383,9 +418,9 @@ export function moreAlternatives(
 ): Plan {
   const target = plan.days[dayIdx]?.meals[mealIdx];
   if (!target || target.leftover) return plan;
-  const pair = pairIndex(plan, dayIdx, target);
+  const fol = followers(plan, dayIdx, target);
   const isTarget = (di: number, mi: number) =>
-    (di === dayIdx && mi === mealIdx) || (pair >= 0 && di === dayIdx + 1 && mi === pair);
+    (di === dayIdx && mi === mealIdx) || fol.some(([fd, fm]) => fd === di && fm === mi);
 
   // kdy se co jí (historie + ostatní jídla v plánu)
   const ingDates: Record<string, string[]> = {};
@@ -410,10 +445,11 @@ export function moreAlternatives(
     dates && dates.length ? Math.min(...dates.map((d) => Math.abs(daysBetween(d, date)))) : Infinity;
   const base = {
     type: (target.slot === 'breakfast' ? 'breakfast' : 'main') as MealType,
-    mult: target.doubled ? 2 : 1,
-    batchOnly: !!target.doubled,
+    mult: mealMult(target),
+    batchOnly: mealMult(target) > 1,
     duration: plan.settings.duration,
     noMeat: plan.settings.noMeat,
+    sources: plan.settings.sources,
     lambda: 0,
     used,
     want: ALT_COUNT,
@@ -459,7 +495,7 @@ export function buildShopping(plan: Plan, pf: PriceFns): ShopRow[] {
   for (const day of plan.days) {
     for (const m of day.meals) {
       if (m.leftover) continue;
-      for (const [id, a] of mealIngredients(RECIPE_MAP[m.recipeId], m.sideId, m.doubled ? 2 : 1)) {
+      for (const [id, a] of mealIngredients(RECIPE_MAP[m.recipeId], m.sideId, mealMult(m))) {
         totals.set(id, (totals.get(id) ?? 0) + a);
       }
     }

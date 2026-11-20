@@ -74,6 +74,8 @@ export const INGREDIENTS: Ingredient[] = [
   { id: 'salat', name: 'Salát (hlávkový)', unit: 'ks', price: 28, kind: 'veg' },
   { id: 'banany', name: 'Banány', unit: 'kg', price: 40, kind: 'veg' },
   { id: 'jablka', name: 'Jablka', unit: 'kg', price: 40, kind: 'veg' },
+  { id: 'bataty', name: 'Batáty', unit: 'kg', price: 55, kind: 'veg' },
+  { id: 'avokado', name: 'Avokádo', unit: 'ks', price: 25, kind: 'veg' },
   { id: 'protlak', name: 'Rajčatový protlak (140 g)', unit: 'ks', price: 22, kind: 'other' },
   { id: 'strouhanka', name: 'Strouhanka', unit: 'kg', price: 45, kind: 'other' },
   { id: 'mouka', name: 'Mouka', unit: 'kg', price: 22, kind: 'other' },

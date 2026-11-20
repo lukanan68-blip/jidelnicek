@@ -20,8 +20,12 @@ export interface Settings {
   noMeat: boolean;
   /** Délka vaření obědů a večeří (celkový čas): do 35 minut, do hodiny a / nebo nad hodinu. */
   duration: { fast: boolean; short: boolean; long: boolean };
+  /** Z jakých webů mají být recepty (názvy zdrojů). Chybí = ze všech. */
+  sources?: string[];
   /** Večeře uvařená dvojitě = oběd další den. */
   batch: boolean;
+  /** Stejný oběd / večeře na tolik dní (1 = každý den jiné jídlo). */
+  repeat: { lunch: number; dinner: number };
   startDate: string;
 }
 
@@ -56,7 +60,10 @@ export interface PlanMeal {
   recipeId: string;
   sideId?: string;
   /** Jídlo se vaří dvojitě (stačí i na další oběd). */
+  /** Zastaralé (starší plány): jídlo se vaří dvojitě. Nově batchDays. */
   doubled?: boolean;
+  /** Jídlo se uvaří najednou na tolik dní (stejné jídlo se jí víckrát). */
+  batchDays?: number;
   /** Zbytky z včerejší večeře – nevaří se. */
   leftover?: boolean;
   /** Další jídla, ze kterých jde u tohoto chodu vybírat. */

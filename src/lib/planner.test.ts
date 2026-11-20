@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MEAT_IDS } from '../data/ingredients';
-import { FAST, HOUR, RECIPE_MAP, totalMin } from '../data/recipes';
+import { FAST, HOUR, RECIPE_MAP, sourceOf, totalMin } from '../data/recipes';
 import {
   ALT_COUNT,
   buildShopping,
@@ -26,6 +26,7 @@ const settings: Settings = {
   noMeat: false,
   duration: { fast: true, short: true, long: true },
   batch: false,
+  repeat: { lunch: 1, dinner: 1 },
   startDate: '2026-11-11',
 };
 
@@ -157,7 +158,7 @@ describe('plánovač', () => {
     const dinner = p.days[0].meals.find((m) => m.slot === 'dinner')!;
     expect(lunch.leftover).toBe(true);
     expect(lunch.recipeId).toBe(dinner.recipeId);
-    expect(dinner.doubled).toBe(true);
+    expect(dinner.batchDays).toBe(2);
     const pf = makePriceFns({}, [], '2026-11-11');
     const rows = buildShopping(p, pf);
     expect(rows.reduce((s, r) => s + r.cost, 0)).toBeCloseTo(planCost(p, pf), 5);
@@ -178,6 +179,63 @@ describe('plánovač', () => {
   it('prošlá sleva se nepočítá', () => {
     const pf = makePriceFns({}, [{ id: 'd', store: 'Lidl', ingredientId: 'vejce', price: 1, validTo: '2026-11-01' }], '2026-11-11');
     expect(pf.best('vejce')).toBeUndefined();
+  });
+
+  it('stejný oběd na 2 dny: oběd se uvaří jednou a druhý den jsou zbytky', () => {
+    const p = generatePlan(base({}, { days: 4, repeat: { lunch: 2, dinner: 1 } }));
+    const lunch = (d: number) => p.days[d].meals.find((m) => m.slot === 'lunch')!;
+    expect(lunch(0).batchDays).toBe(2);
+    expect(lunch(1).leftover).toBe(true);
+    expect(lunch(1).recipeId).toBe(lunch(0).recipeId);
+    expect(lunch(1).sideId).toBe(lunch(0).sideId);
+    expect(lunch(2).batchDays).toBe(2);
+    expect(lunch(3).leftover).toBe(true);
+    expect(lunch(2).recipeId).not.toBe(lunch(0).recipeId);
+    // večeře zůstávají každý den jiné
+    const dinners = p.days.map((d) => d.meals.find((m) => m.slot === 'dinner')!.recipeId);
+    expect(new Set(dinners).size).toBe(4);
+    // nákup počítá surovin tolik, kolik se uvaří (dvojnásobek), zbytky nic nestojí
+    const pf = makePriceFns({}, [], '2026-11-20');
+    const cooked = lunch(0);
+    const rows = buildShopping({ ...p, days: [{ date: p.days[0].date, meals: [cooked] }] }, pf);
+    const single = buildShopping({ ...p, days: [{ date: p.days[0].date, meals: [{ ...cooked, batchDays: undefined }] }] }, pf);
+    for (const r of single) expect(rows.find((x) => x.id === r.id)!.amount).toBeCloseTo(r.amount * 2, 6);
+  });
+
+  it('stejný oběd na 3 dny, plán na 4 dny: poslední den je samostatný', () => {
+    const p = generatePlan(base({}, { days: 4, repeat: { lunch: 3, dinner: 1 } }));
+    const lunch = (d: number) => p.days[d].meals.find((m) => m.slot === 'lunch')!;
+    expect(lunch(0).batchDays).toBe(3);
+    expect(lunch(1).leftover && lunch(2).leftover).toBe(true);
+    expect(lunch(3).leftover).toBeUndefined();
+    expect(lunch(3).batchDays).toBeUndefined();
+  });
+
+  it('výběr alternativy u jídla na víc dní změní i všechny zbytky', () => {
+    const p = generatePlan(base({}, { days: 4, repeat: { lunch: 3, dinner: 1 } }));
+    const mi = p.days[0].meals.findIndex((m) => m.slot === 'lunch');
+    const q = chooseAlternative(p, 0, mi, 0);
+    const first = q.days[0].meals[mi];
+    for (const d of [1, 2]) {
+      const m = q.days[d].meals.find((x) => x.slot === 'lunch')!;
+      expect(m.leftover).toBe(true);
+      expect(m.recipeId).toBe(first.recipeId);
+      expect(m.sideId).toBe(first.sideId);
+    }
+    expect(first.batchDays).toBe(3);
+  });
+
+  it('suroviny, které mám doma, plánovač preferuje a nepočítá do ceny', () => {
+    let withHave = 0;
+    let without = 0;
+    for (let seed = 1; seed <= 20; seed++) {
+      const used = (p: ReturnType<typeof generatePlan>) =>
+        p.days.some((d) => d.meals.some((m) => !m.leftover && mealIngredients(RECIPE_MAP[m.recipeId], m.sideId).some(([id]) => id === 'hoveze')));
+      if (used(generatePlan(base({ seed, have: ['hoveze'] })))) withHave++;
+      if (used(generatePlan(base({ seed })))) without++;
+    }
+    expect(withHave).toBeGreaterThan(without);
+    expect(withHave).toBeGreaterThanOrEqual(10);
   });
 
   it('sleva, která teprve začne, se nepočítá, a po začátku už ano', () => {
@@ -344,5 +402,32 @@ describe('plánovač', () => {
     const none = whereToBuy('michana-vejce', 'chleb', 1, makePriceFns({}, [], '2026-11-20'));
     expect(none.groups).toHaveLength(0);
     expect(none.saving).toBe(0);
+  });
+});
+
+describe('zdroje receptů a míchání', () => {
+  it('bere recepty jen z vybraných webů (snídaně, pro které tam nic není, odjinud)', () => {
+    for (const src of [['Vilgain'], ['Mandimu', 'Toprecepty']]) {
+      const p = generatePlan(base({}, { sources: src, days: 4 }));
+      for (const m of p.days.flatMap((d) => d.meals)) {
+        if (m.slot === 'breakfast') continue;
+        expect(src, RECIPE_MAP[m.recipeId].name).toContain(sourceOf(RECIPE_MAP[m.recipeId]));
+      }
+    }
+    const only = generatePlan(base({}, { sources: ['Toprecepty'], days: 2 }));
+    expect(only.days.flatMap((d) => d.meals).filter((m) => m.slot === 'breakfast')).toHaveLength(2);
+  });
+
+  it('při každém návrhu ukáže jiná jídla', () => {
+    const seen = new Set<string>();
+    const sets: string[] = [];
+    for (let seed = 1; seed <= 12; seed++) {
+      const p = generatePlan(base({ seed }, { days: 3 }));
+      const ids = p.days.flatMap((d) => d.meals.filter((m) => m.slot === 'dinner').map((m) => m.recipeId));
+      ids.forEach((i) => seen.add(i));
+      sets.push(ids.join());
+    }
+    expect(new Set(sets).size).toBeGreaterThan(8);
+    expect(seen.size).toBeGreaterThan(20);
   });
 });

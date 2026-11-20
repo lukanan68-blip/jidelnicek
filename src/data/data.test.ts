@@ -43,7 +43,8 @@ describe('data', () => {
     const withPhoto = RECIPES.filter((r) => r.photo);
     expect(withPhoto.length).toBeGreaterThan(60);
     for (const r of withPhoto) {
-      expect(r.photo!.url, r.name).toMatch(/^https:\/\/.+\.(jpg|jpeg|png|webp)$/i);
+      // Vilgain a Mandimu mají obrázky na svém CDN bez přípony nebo s parametry
+      expect(r.photo!.url, r.name).toMatch(/^https:\/\/(cdn\.vilgain\.com\/|mandimu\.cz\/cdn\/).+|^https:\/\/.+\.(jpg|jpeg|png|webp)$/i);
       expect(r.photo!.link, r.name).toMatch(/^https:\/\//);
       expect(r.photo!.site, r.name).toBeTruthy();
     }

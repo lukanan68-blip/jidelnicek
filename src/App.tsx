@@ -5,7 +5,7 @@ import { PlanTab } from './components/PlanTab';
 import { PricesTab } from './components/PricesTab';
 import { ShoppingTab } from './components/ShoppingTab';
 import { leafletDiscounts } from './data/leaflets';
-import type { DurationFilter } from './data/recipes';
+import { SOURCE_OPTIONS, type DurationFilter } from './data/recipes';
 import { todayISO } from './lib/format';
 import { chooseAlternative, generatePlan, makePriceFns, moreAlternatives } from './lib/planner';
 import type { Discount, HistoryEntry, Plan, PriceOverrides, Settings } from './lib/types';
@@ -41,6 +41,7 @@ export default function App() {
     noMeat: false,
     duration: { fast: true, short: false, long: false },
     batch: false,
+    repeat: { lunch: 1, dinner: 1 },
     startDate: today,
   });
   const [history, setHistory] = useStored<HistoryEntry[]>('jid.history', []);
@@ -59,6 +60,8 @@ export default function App() {
     ...settings,
     duration: migrateDuration(settings),
     noMeat: !!settings.noMeat,
+    sources: settings.sources?.filter((s) => SOURCE_OPTIONS.includes(s)) ?? SOURCE_OPTIONS,
+    repeat: { lunch: settings.repeat?.lunch ?? 1, dinner: settings.repeat?.dinner ?? 1 },
     useBudget: settings.useBudget !== false,
     useDate: settings.useDate !== false,
     startDate: settings.useDate === false || settings.startDate < today ? today : settings.startDate,
@@ -131,6 +134,8 @@ export default function App() {
             setShopStore={setShopStore}
             storesWithDeals={pfAll.stores}
             toggleHave={toggleHave}
+            have={have}
+            clearHave={() => setHave([])}
             onGenerate={onGenerate}
             onChoose={onChoose}
             onMore={onMore}
