@@ -13,6 +13,8 @@ export interface Settings {
   slots: Record<Slot, boolean>;
   /** „Nechci u toho trávit moc času“ – jen rychlá jídla. */
   quick: boolean;
+  /** Délka vaření obědů a večeří (celkový čas): do hodiny a / nebo nad hodinu. */
+  duration: { short: boolean; long: boolean };
   /** Večeře uvařená dvojitě = oběd další den. */
   batch: boolean;
   startDate: string;
@@ -33,6 +35,8 @@ export interface Discount {
   ingredientId: string;
   /** Akční cena za kg / l / ks. */
   price: number;
+  /** Sleva platí od tohoto dne (u letáků, které teprve začnou). */
+  validFrom?: string;
   validTo?: string;
 }
 
@@ -58,6 +62,8 @@ export interface Plan {
   days: PlanDay[];
   /** Nejnižší cena, které se u tohoto zadání podařilo dosáhnout. */
   cheapestCost: number;
+  /** Kolik jídel se nepodařilo najít (málo receptů pro zvolené filtry). */
+  missing?: number;
 }
 
 /** Vlastní ceny surovin (přepisují výchozí odhad). */

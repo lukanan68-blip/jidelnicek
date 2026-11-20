@@ -20,6 +20,26 @@ export interface Recipe {
   search?: string;
 }
 
+/** Hranice pro filtr „do hodiny“ / „nad hodinu“ (celkový čas, tedy včetně pečení a dušení). */
+export const HOUR = 60;
+
+export function totalMin(r: Recipe): number {
+  return r.min + (r.extra ?? 0);
+}
+
+export interface DurationFilter {
+  short: boolean;
+  long: boolean;
+}
+
+export const DEFAULT_DURATION: DurationFilter = { short: true, long: true };
+
+/** Filtr se týká obědů a večeří. Snídaně jsou vždy rychlé a filtrem se nevyřazují. */
+export function matchesDuration(r: Recipe, d: DurationFilter = DEFAULT_DURATION): boolean {
+  if (r.meal === 'breakfast') return true;
+  return totalMin(r) <= HOUR ? d.short : d.long;
+}
+
 const ALL_STARCH = ['testoviny', 'ryze', 'knedliky', 'brambory'];
 
 export const RECIPES: Recipe[] = [
@@ -64,6 +84,14 @@ export const RECIPES: Recipe[] = [
   { id: 'omeleta-sunka', name: 'Omeleta se šunkou a sýrem, salát', meal: 'main', min: 15, sides: ['chleb', 'tortilla'], sideAmounts: { chleb: 150, tortilla: 2 }, ing: [['vejce', 5], ['sunka', 80], ['syr', 60], ['salat', 1]], noBatch: true },
   { id: 'kureci-zelenina-rice', name: 'Kuřecí kousky se sladkokyselou zeleninou', meal: 'main', min: 25, sides: ['ryze', 'bulgur'], ing: [['kureci-prsa', 250], ['paprika', 120], ['kukurice', 1], ['cibule', 80]] },
   { id: 'fazolovy-gulas', name: 'Fazolový guláš s klobásou', meal: 'main', min: 25, sides: ['chleb', 'brambory'], sideAmounts: { chleb: 250 }, ing: [['fazole', 2], ['klobasa', 150], ['cibule', 100], ['paprika', 80]] },
+
+  // ---------- DELŠÍ JÍDLA (celkem nad hodinu, většinou se vaří nebo pečou samy) ----------
+  { id: 'pecene-kure', name: 'Pečené kuře s bramborami', meal: 'main', min: 15, extra: 90, sides: ['brambory', 'ryze'], ing: [['kure-cele', 1400], ['mrkev', 200], ['cibule', 100], ['cesnek', 1]], search: 'pečené kuře' },
+  { id: 'lasagne', name: 'Lasagne s mletým masem', meal: 'main', min: 40, extra: 35, sides: ['testoviny'], sideAmounts: { testoviny: 200 }, ing: [['mlete', 300], ['rajcata-konzerva', 1], ['smetana', 1], ['syr', 100], ['cibule', 80], ['cesnek', 1]] },
+  { id: 'segedinsky-gulas', name: 'Segedínský guláš', meal: 'main', min: 25, extra: 70, sides: ['knedliky', 'brambory', 'chleb'], sideAmounts: { chleb: 250 }, ing: [['veprova-plec', 400], ['zeli', 400], ['cibule', 150], ['smetana', 1]] },
+  { id: 'veprova-pecene', name: 'Vepřová pečeně se zelím', meal: 'main', min: 15, extra: 100, sides: ['knedliky', 'brambory'], ing: [['veprova-plec', 600], ['zeli', 400], ['cibule', 100], ['cesnek', 1]], search: 'vepřo knedlo zelo' },
+  { id: 'cockova-polevka', name: 'Čočková polévka s klobásou', meal: 'main', min: 20, extra: 50, sides: ['chleb'], sideAmounts: { chleb: 200 }, ing: [['cocka', 150], ['klobasa', 150], ['mrkev', 100], ['cibule', 80], ['cesnek', 1]] },
+  { id: 'dusena-stehna', name: 'Kuřecí stehna dušená na rajčatech', meal: 'main', min: 20, extra: 45, sides: ['ryze', 'brambory', 'kuskus', 'testoviny'], ing: [['kureci-stehna', 700], ['rajcata-konzerva', 2], ['cibule', 100], ['paprika', 100]] },
 ];
 
 export const RECIPE_MAP: Record<string, Recipe> = Object.fromEntries(RECIPES.map((r) => [r.id, r]));

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { UNIT_LABEL } from '../data/ingredients';
-import { fmtAmount, fmtKc } from '../lib/format';
+import { fmtAmount, fmtKc, fmtPrice } from '../lib/format';
 import { buildShopping, type PriceFns, type ShopRow } from '../lib/planner';
 import type { Plan } from '../lib/types';
 
@@ -89,7 +89,7 @@ export function ShoppingTab({ plan, pf, checked, setChecked, goTo }: Props) {
                     {r.discountPrice !== undefined && (
                       <small>
                         {' '}
-                        akce {r.discountPrice} Kč/{UNIT_LABEL[r.unit]}
+                        akce {fmtPrice(r.discountPrice)}/{UNIT_LABEL[r.unit]}
                       </small>
                     )}
                   </span>

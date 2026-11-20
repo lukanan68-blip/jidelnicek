@@ -524,3 +524,15 @@ footer {
 details:not([open]) > .group-title::before {
   content: '▸';
 }
+
+.leaflet summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 4px;
+}
+.leaflet .log small {
+  display: block;
+}

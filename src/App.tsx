@@ -4,6 +4,8 @@ import { HistoryTab } from './components/HistoryTab';
 import { PlanTab } from './components/PlanTab';
 import { PricesTab } from './components/PricesTab';
 import { ShoppingTab } from './components/ShoppingTab';
+import { leafletDiscounts } from './data/leaflets';
+import { DEFAULT_DURATION } from './data/recipes';
 import { todayISO } from './lib/format';
 import { generatePlan, makePriceFns, swapMeal } from './lib/planner';
 import type { Discount, HistoryEntry, Plan, PriceOverrides, Settings } from './lib/types';
@@ -27,6 +29,7 @@ export default function App() {
     budget: 400,
     slots: { breakfast: true, lunch: true, dinner: true },
     quick: true,
+    duration: DEFAULT_DURATION,
     batch: false,
     startDate: today,
   });
@@ -36,21 +39,29 @@ export default function App() {
   const [plan, setPlan] = useStored<Plan | null>('jid.plan', null);
   const [checked, setChecked] = useStored<Record<string, boolean>>('jid.checked', {});
 
-  const pf = useMemo(() => makePriceFns(prices, discounts, today), [prices, discounts, today]);
-
+  // slevy z letáků (součást aplikace) + ty, které si zadáš ručně
+  const allDiscounts = useMemo(() => [...leafletDiscounts(), ...discounts], [discounts]);
   // starý uložený začátek v minulosti neposouvá plán do minulosti
-  const effectiveSettings = { ...settings, startDate: settings.startDate < today ? today : settings.startDate };
+  const effectiveSettings: Settings = {
+    ...settings,
+    duration: { ...DEFAULT_DURATION, ...settings.duration },
+    startDate: settings.startDate < today ? today : settings.startDate,
+  };
+
+  // slevy se berou k prvnímu dni plánu (plán na pondělí použije pondělní leták)
+  const refDate = plan ? (plan.settings.startDate < today ? today : plan.settings.startDate) : effectiveSettings.startDate;
+  const pf = useMemo(() => makePriceFns(prices, allDiscounts, refDate), [prices, allDiscounts, refDate]);
 
   function onGenerate() {
     const seed = Math.floor(Math.random() * 1e9);
-    setPlan(generatePlan({ settings: effectiveSettings, history, discounts, prices, today, seed }));
+    setPlan(generatePlan({ settings: effectiveSettings, history, discounts: allDiscounts, prices, today: effectiveSettings.startDate, seed }));
     setChecked({});
   }
 
   function onSwap(dayIdx: number, mealIdx: number) {
     if (!plan) return;
     const seed = Math.floor(Math.random() * 1e9);
-    setPlan(swapMeal(plan, dayIdx, mealIdx, { history, discounts, prices, today }, seed));
+    setPlan(swapMeal(plan, dayIdx, mealIdx, { history, discounts: allDiscounts, prices, today: refDate }, seed));
   }
 
   return (

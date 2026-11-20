@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { INGREDIENT_MAP, STAPLE_IDS } from '../data/ingredients';
-import { RECIPE_MAP, RECIPE_SITES, recipeSearchUrl } from '../data/recipes';
+import { HOUR, RECIPE_MAP, RECIPE_SITES, recipeSearchUrl } from '../data/recipes';
 import { agoLabel, daysBetween, fmtAmount, fmtKc, formatDay, formatShort, uid } from '../lib/format';
 import {
   QUICK_MAX,
@@ -31,6 +31,8 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
   const saved = baseTotal - total;
   const over = plan ? total > plan.settings.budget + 0.5 : false;
   const anySlot = SLOT_ORDER.some((s) => settings.slots[s]);
+  const anyDuration = settings.duration.short || settings.duration.long;
+  const hasMains = settings.slots.lunch || settings.slots.dinner;
 
   return (
     <div className="stack">
@@ -110,8 +112,43 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
           </span>
         </label>
 
+        {hasMains && (
+          <fieldset>
+            <legend>Délka vaření (obědy a večeře, celkový čas)</legend>
+            <div className="chips">
+              <label className="check">
+                <input
+                  type="checkbox"
+                  checked={settings.duration.short}
+                  onChange={(e) => setSettings((s) => ({ ...s, duration: { ...s.duration, short: e.target.checked } }))}
+                />
+                <span>
+                  Jídla do hodiny
+                  <small> – celkem do {HOUR} min</small>
+                </span>
+              </label>
+              <label className="check">
+                <input
+                  type="checkbox"
+                  checked={settings.duration.long}
+                  onChange={(e) => setSettings((s) => ({ ...s, duration: { ...s.duration, long: e.target.checked } }))}
+                />
+                <span>
+                  Jídla nad hodinu
+                  <small> – pečení, dušení, guláše</small>
+                </span>
+              </label>
+            </div>
+            {!anyDuration && (
+              <p role="alert" className="error">
+                Zaškrtni aspoň jednu délku, jinak nemám z čeho vybírat.
+              </p>
+            )}
+          </fieldset>
+        )}
+
         <div className="row">
-          <button className="primary" onClick={onGenerate} disabled={!anySlot}>
+          <button className="primary" onClick={onGenerate} disabled={!anySlot || (hasMains && !anyDuration)}>
             {plan ? 'Navrhnout znovu' : 'Navrhnout jídelníček'}
           </button>
         </div>
@@ -144,6 +181,15 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
               </p>
             )}
           </section>
+
+          {!!plan.missing && (
+            <section className="card summary warn" role="alert">
+              <p>
+                Pro zvolené filtry nebylo dost receptů, chybí {plan.missing} jídel. Povol i druhou délku vaření nebo
+                vypni rychlý režim.
+              </p>
+            </section>
+          )}
 
           {plan.days.map((day, di) => (
             <section key={day.date} className="card">

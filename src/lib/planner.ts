@@ -1,5 +1,5 @@
 import { INGREDIENT_MAP, STAPLE_IDS } from '../data/ingredients';
-import { RECIPES, RECIPE_MAP, type MealType, type Recipe } from '../data/recipes';
+import { RECIPES, RECIPE_MAP, matchesDuration, type DurationFilter, type MealType, type Recipe } from '../data/recipes';
 import { addDays, daysBetween, uid } from './format';
 import {
   SLOT_ORDER,
@@ -32,7 +32,7 @@ export function makePriceFns(
   today: string,
 ): PriceFns {
   const base = (id: string) => overrides[id] ?? INGREDIENT_MAP[id].price;
-  const active = discounts.filter((d) => !d.validTo || d.validTo >= today);
+  const active = discounts.filter((d) => (!d.validFrom || d.validFrom <= today) && (!d.validTo || d.validTo >= today));
   const best = (id: string) => {
     let b: Discount | undefined;
     for (const d of active) {
@@ -137,6 +137,7 @@ interface Pick {
   mult: number;
   batchOnly: boolean;
   quick: boolean;
+  duration?: DurationFilter;
   lambda: number;
   used: Set<string>;
   exclude?: string;
@@ -159,6 +160,7 @@ function pickBest(p: Pick): Cand | undefined {
       r.meal === p.type &&
       r.id !== p.exclude &&
       (!p.quick || r.min <= QUICK_MAX) &&
+      matchesDuration(r, p.duration) &&
       (!p.batchOnly || !r.noBatch),
   );
   const fresh = pool.filter((r) => !p.used.has(r.id));
@@ -202,7 +204,7 @@ export interface PlanInput {
   seed: number;
 }
 
-function run(input: PlanInput, lambda: number): { days: PlanDay[]; total: number } {
+function run(input: PlanInput, lambda: number): { days: PlanDay[]; total: number; missing: number } {
   const { settings } = input;
   const pf = makePriceFns(input.prices, input.discounts, input.today);
   const last = buildLast(input.history);
@@ -211,6 +213,7 @@ function run(input: PlanInput, lambda: number): { days: PlanDay[]; total: number
   const leftovers = new Map<number, PlanMeal>();
   const days: PlanDay[] = [];
   let total = 0;
+  let missing = 0;
 
   for (let d = 0; d < settings.days; d++) {
     const date = addDays(settings.startDate, d);
@@ -235,6 +238,7 @@ function run(input: PlanInput, lambda: number): { days: PlanDay[]; total: number
         mult: batchPair ? 2 : 1,
         batchOnly: batchPair,
         quick: settings.quick,
+        duration: settings.duration,
         lambda,
         used,
         dist,
@@ -242,7 +246,10 @@ function run(input: PlanInput, lambda: number): { days: PlanDay[]; total: number
         pf,
         rnd,
       });
-      if (!best) continue;
+      if (!best) {
+        missing++;
+        continue;
+      }
 
       meals.push({ slot, recipeId: best.recipe.id, sideId: best.sideId, doubled: batchPair || undefined });
       total += best.cost;
@@ -254,12 +261,13 @@ function run(input: PlanInput, lambda: number): { days: PlanDay[]; total: number
     }
     days.push({ date, meals });
   }
-  return { days, total };
+  return { days, total, missing };
 }
 
 export function generatePlan(input: PlanInput): Plan {
-  let chosen: { days: PlanDay[]; total: number } | undefined;
-  let cheapest: { days: PlanDay[]; total: number } | undefined;
+  type Run = ReturnType<typeof run>;
+  let chosen: Run | undefined;
+  let cheapest: Run | undefined;
 
   for (const lambda of LAMBDAS) {
     const r = run(input, lambda);
@@ -276,6 +284,7 @@ export function generatePlan(input: PlanInput): Plan {
     settings: input.settings,
     days: final.days,
     cheapestCost: cheapest!.total,
+    missing: final.missing,
   };
 }
 
@@ -324,6 +333,7 @@ export function swapMeal(
     mult: target.doubled ? 2 : 1,
     batchOnly: !!target.doubled,
     quick: plan.settings.quick,
+    duration: plan.settings.duration,
     lambda: 0,
     used,
     exclude: target.recipeId,

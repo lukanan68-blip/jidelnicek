@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RECIPE_MAP } from '../data/recipes';
+import { HOUR, RECIPE_MAP, totalMin } from '../data/recipes';
 import { QUICK_MAX, buildShopping, generatePlan, makePriceFns, planCost, swapMeal, type PlanInput } from './planner';
 import type { Settings } from './types';
 
@@ -8,6 +8,7 @@ const settings: Settings = {
   budget: 1000,
   slots: { breakfast: true, lunch: true, dinner: true },
   quick: false,
+  duration: { short: true, long: true },
   batch: false,
   startDate: '2026-11-11',
 };
@@ -73,6 +74,28 @@ describe('plánovač', () => {
     expect(poor.cheapestCost).toBeGreaterThan(0);
   });
 
+  it('filtr „do hodiny“ vybere obědy a večeře jen do 60 minut celkem', () => {
+    const p = generatePlan(base({}, { days: 6, duration: { short: true, long: false } }));
+    const mains = p.days.flatMap((d) => d.meals.filter((m) => m.slot !== 'breakfast'));
+    expect(mains.length).toBe(12);
+    for (const m of mains) expect(totalMin(RECIPE_MAP[m.recipeId])).toBeLessThanOrEqual(HOUR);
+  });
+
+  it('filtr „nad hodinu“ vybere jen delší jídla a snídaně nechá', () => {
+    const p = generatePlan(base({}, { days: 4, duration: { short: false, long: true } }));
+    const meals = p.days.flatMap((d) => d.meals);
+    expect(meals.filter((m) => m.slot === 'breakfast')).toHaveLength(4);
+    for (const m of meals.filter((x) => x.slot !== 'breakfast')) {
+      expect(totalMin(RECIPE_MAP[m.recipeId])).toBeGreaterThan(HOUR);
+    }
+    expect(p.missing).toBe(0);
+  });
+
+  it('bez zaškrtnuté délky plán hlásí chybějící jídla', () => {
+    const p = generatePlan(base({}, { days: 2, duration: { short: false, long: false } }));
+    expect(p.missing).toBe(4);
+  });
+
   it('rychlý režim bere jen rychlá jídla', () => {
     const p = generatePlan(base({}, { quick: true, days: 5 }));
     for (const m of p.days.flatMap((d) => d.meals)) expect(RECIPE_MAP[m.recipeId].min).toBeLessThanOrEqual(QUICK_MAX);
@@ -105,6 +128,13 @@ describe('plánovač', () => {
   it('prošlá sleva se nepočítá', () => {
     const pf = makePriceFns({}, [{ id: 'd', store: 'Lidl', ingredientId: 'vejce', price: 1, validTo: '2026-11-01' }], '2026-11-11');
     expect(pf.best('vejce')).toBeUndefined();
+  });
+
+  it('sleva, která teprve začne, se nepočítá, a po začátku už ano', () => {
+    const d = [{ id: 'd', store: 'Kaufland', ingredientId: 'vejce', price: 1, validFrom: '2026-11-23', validTo: '2026-11-24' }];
+    expect(makePriceFns({}, d, '2026-11-20').best('vejce')).toBeUndefined();
+    expect(makePriceFns({}, d, '2026-11-23').best('vejce')?.store).toBe('Kaufland');
+    expect(makePriceFns({}, d, '2026-11-25').best('vejce')).toBeUndefined();
   });
 
   it('výměna jídla změní recept a zachová počet jídel', () => {

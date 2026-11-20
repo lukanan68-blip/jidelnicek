@@ -30,6 +30,7 @@ export const INGREDIENTS: Ingredient[] = [
   // maso, vejce, luštěniny
   { id: 'kureci-prsa', name: 'Kuřecí prsa', unit: 'kg', price: 190, kind: 'protein' },
   { id: 'kureci-stehna', name: 'Kuřecí stehna', unit: 'kg', price: 95, kind: 'protein' },
+  { id: 'kure-cele', name: 'Kuře celé', unit: 'kg', price: 85, kind: 'protein' },
   { id: 'mlete', name: 'Mleté maso (mix)', unit: 'kg', price: 170, kind: 'protein' },
   { id: 'veprova-plec', name: 'Vepřová plec', unit: 'kg', price: 165, kind: 'protein' },
   { id: 'klobasa', name: 'Klobása / párky', unit: 'kg', price: 160, kind: 'protein' },
@@ -93,7 +94,7 @@ export const HISTORY_GROUPS: { title: string; ids: string[] }[] = [
   { title: 'Přílohy', ids: INGREDIENTS.filter((i) => i.kind === 'side').map((i) => i.id) },
   {
     title: 'Maso a ryby',
-    ids: ['kureci-prsa', 'kureci-stehna', 'mlete', 'veprova-plec', 'klobasa', 'sunka', 'ryba', 'tunak'],
+    ids: ['kureci-prsa', 'kureci-stehna', 'kure-cele', 'mlete', 'veprova-plec', 'klobasa', 'sunka', 'ryba', 'tunak'],
   },
   { title: 'Vejce a luštěniny', ids: ['vejce', 'cocka', 'cervena-cocka', 'cizrna', 'fazole'] },
   {

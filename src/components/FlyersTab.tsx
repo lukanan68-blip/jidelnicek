@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { INGREDIENTS, INGREDIENT_MAP, STORES, UNIT_LABEL } from '../data/ingredients';
-import { fmtKc, formatShort, uid } from '../lib/format';
+import { fmtPrice, formatShort, uid } from '../lib/format';
 import type { Discount, PriceOverrides } from '../lib/types';
+import { LeafletList } from './LeafletList';
 
 interface Props {
   discounts: Discount[];
@@ -35,10 +36,12 @@ export function FlyersTab({ discounts, setDiscounts, prices, today }: Props) {
 
   return (
     <div className="stack">
+      <LeafletList today={today} />
+
       <section className="card">
-        <h2>Slevy z letáků</h2>
+        <h2>Vlastní slevy</h2>
         <p className="hint">
-          Slevy zatím zapisuješ ručně, obchody nenabízejí oficiální data. Otevři si letáky (třeba na{' '}
+          Sem si zapiš slevy, které v načtených letácích nejsou (třeba z Lidlu). Letáky najdeš třeba na{' '}
           <a href="https://www.kupi.cz/" target="_blank" rel="noreferrer">
             kupi.cz
           </a>
@@ -87,7 +90,7 @@ export function FlyersTab({ discounts, setDiscounts, prices, today }: Props) {
       </section>
 
       <section className="card">
-        <h3>Aktuální slevy</h3>
+        <h3>Tvoje slevy</h3>
         {active.length === 0 ? (
           <p className="muted">Zatím žádné. Bez slev se počítá běžná cena.</p>
         ) : (
@@ -99,7 +102,7 @@ export function FlyersTab({ discounts, setDiscounts, prices, today }: Props) {
                 return (
                   <li key={d.id}>
                     <span>
-                      <b>{d.store}</b> · {i.name} · {fmtKc(d.price)}/{UNIT_LABEL[i.unit]}
+                      <b>{d.store}</b> · {i.name} · {fmtPrice(d.price)}/{UNIT_LABEL[i.unit]}
                       {d.validTo && <small className="muted"> do {formatShort(d.validTo)}</small>}
                     </span>
                     <button aria-label="Smazat slevu" onClick={() => setDiscounts((x) => x.filter((e) => e.id !== d.id))}>

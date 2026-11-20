@@ -54,6 +54,12 @@ export function fmtKc(n: number): string {
   return `${Math.round(n)} Kč`;
 }
 
+/** Jednotková cena s haléři, kde jsou: 2,99 Kč, 9,90 Kč, 130 Kč. */
+export function fmtPrice(n: number): string {
+  const v = n < 100 ? n.toFixed(2) : String(Math.round(n * 100) / 100);
+  return `${v.replace('.', ',')} Kč`;
+}
+
 export function fmtAmount(unit: Unit, amount: number): string {
   if (unit === 'ks') {
     const v = Math.round(amount * 10) / 10;
