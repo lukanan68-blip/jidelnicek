@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MEAT_IDS } from '../data/ingredients';
-import { FAST, HOUR, RECIPE_MAP, sourceOf, totalMin } from '../data/recipes';
+import { FAST, HOUR, RECIPE_MAP, difficulty, sourceOf, totalMin } from '../data/recipes';
 import {
   ALT_COUNT,
   buildShopping,
@@ -407,7 +407,7 @@ describe('plánovač', () => {
 
 describe('zdroje receptů a míchání', () => {
   it('bere recepty jen z vybraných webů (snídaně, pro které tam nic není, odjinud)', () => {
-    for (const src of [['Vilgain'], ['Mandimu', 'Toprecepty']]) {
+    for (const src of [['Vilgain'], ['Mandimu (Jíme zdravě)', 'Toprecepty']]) {
       const p = generatePlan(base({}, { sources: src, days: 4 }));
       for (const m of p.days.flatMap((d) => d.meals)) {
         if (m.slot === 'breakfast') continue;
@@ -429,5 +429,33 @@ describe('zdroje receptů a míchání', () => {
     }
     expect(new Set(sets).size).toBeGreaterThan(8);
     expect(seen.size).toBeGreaterThan(20);
+  });
+});
+
+describe('stejná snídaně na víc dní', () => {
+  it('snídaně se opakuje a nakupuje se na všechny dny', () => {
+    const p = generatePlan(base({}, { days: 4, slots: { breakfast: true, lunch: false, dinner: false }, repeat: { breakfast: 2, lunch: 1, dinner: 1 } }));
+    const b = p.days.map((d) => d.meals[0]);
+    expect(b[0].recipeId).toBe(b[1].recipeId);
+    expect(b[1].leftover).toBe(true);
+    expect(b[2].recipeId).toBe(b[3].recipeId);
+    expect(b[2].recipeId).not.toBe(b[0].recipeId);
+    expect(b[0].batchDays).toBe(2);
+  });
+});
+
+describe('délka vaření do 1,5 h a nad 1,5 h', () => {
+  it('filtr dělí podle celkového času', () => {
+    const mid = generatePlan(base({}, { days: 5, duration: { fast: false, short: false, long: false, mid: true } }));
+    for (const m of mid.days.flatMap((d) => d.meals).filter((m) => m.slot !== 'breakfast')) expect(totalMin(RECIPE_MAP[m.recipeId])).toBeLessThanOrEqual(90);
+    const xl = generatePlan(base({}, { days: 2, duration: { fast: false, short: false, long: false, xlong: true } }));
+    for (const m of xl.days.flatMap((d) => d.meals).filter((m) => m.slot !== 'breakfast')) expect(totalMin(RECIPE_MAP[m.recipeId])).toBeGreaterThan(90);
+  });
+});
+
+describe('obtížnost', () => {
+  it('rozlišuje všechny tři stupně', () => {
+    const levels = new Set(Object.values(RECIPE_MAP).filter((r) => r.meal === 'main').map(difficulty));
+    expect(levels).toEqual(new Set(['snadné', 'střední', 'náročné']));
   });
 });

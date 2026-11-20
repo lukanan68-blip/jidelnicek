@@ -35,12 +35,12 @@ export const OWN_PHOTOS: Record<string, NonNullable<Recipe['photo']>> = {
  * (U receptů s fotkou je odkaz u fotky.) Klíč je id receptu.
  */
 export const OWN_LINKS: Record<string, { site: string; url: string }> = {
-  'bolonske': { site: 'Mandimu', url: 'https://mandimu.cz/blogs/recepty/bolonska-omacka' },
-  'lasagne': { site: 'Mandimu', url: 'https://mandimu.cz/blogs/recepty/rychle-lasagne' },
-  'zapecene-testoviny': { site: 'Mandimu', url: 'https://mandimu.cz/blogs/recepty/zapecene-testoviny-se-zeleninou' },
+  'bolonske': { site: 'Mandimu (Jíme zdravě)', url: 'https://mandimu.cz/blogs/recepty/bolonska-omacka' },
+  'lasagne': { site: 'Mandimu (Jíme zdravě)', url: 'https://mandimu.cz/blogs/recepty/rychle-lasagne' },
+  'zapecene-testoviny': { site: 'Mandimu (Jíme zdravě)', url: 'https://mandimu.cz/blogs/recepty/zapecene-testoviny-se-zeleninou' },
   'testoviny-tunak': { site: 'Recepty.cz', url: 'https://www.recepty.cz/recept/penne-s-tunakem-a-kukurici-154112' },
   'zapeceny-kvetak': { site: 'Apetit', url: 'https://www.apetitonline.cz/recept/zapeceny-kvetak-s-bramborami' },
   'omeleta-syr': { site: 'Vilgain', url: 'https://vilgain.cz/syrova-omeleta' },
   'omeleta-sunka': { site: 'Vilgain', url: 'https://vilgain.cz/syrova-omeleta' },
-  'kase-banan': { site: 'Mandimu', url: 'https://mandimu.cz/blogs/recepty/ovesna-kase-s-karamelizovanym-bananem' },
+  'kase-banan': { site: 'Mandimu (Jíme zdravě)', url: 'https://mandimu.cz/blogs/recepty/ovesna-kase-s-karamelizovanym-bananem' },
 };

@@ -44,6 +44,11 @@ export function HavePicker({ have, toggleHave, clearHave }: Props) {
         Označ, co už máš. Plánovač k tomu dohledá zbytek: vybírá jídla, ve kterých se tyhle suroviny spotřebují, a
         nepočítá je do ceny nákupu. Výběr se pamatuje i pro další jídelníčky.
       </p>
+      {have.length > 0 && (
+        <button className="mini" onClick={clearHave}>
+          Smazat výběr ({have.length})
+        </button>
+      )}
       <label className="have-search">
         Hledat surovinu
         <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="např. rýže, kuře, mrkev" />
@@ -77,7 +82,7 @@ export function HavePicker({ have, toggleHave, clearHave }: Props) {
       })}
       {have.length > 0 && (
         <button className="mini" onClick={clearHave}>
-          Zrušit celý výběr
+          Smazat výběr
         </button>
       )}
     </details>

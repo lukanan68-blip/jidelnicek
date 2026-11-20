@@ -61,15 +61,39 @@ export interface DurationFilter {
   short: boolean;
   /** Nad hodinu celkem. */
   long: boolean;
+  /** Do hodiny a půl celkem (zahrnuje i kratší). Chybí = vypnuto. */
+  mid?: boolean;
+  /** Nad hodinu a půl celkem. Chybí = vypnuto. */
+  xlong?: boolean;
 }
 
-export const DEFAULT_DURATION: DurationFilter = { fast: true, short: true, long: true };
+/** Hranice pro „do hodiny a půl“. */
+export const HOUR_HALF = 90;
+
+export const DEFAULT_DURATION: DurationFilter = { fast: true, short: true, long: true, mid: true, xlong: true };
 
 /** Filtr se týká obědů a večeří. Snídaně jsou vždy rychlé a filtrem se nevyřazují. Zaškrtnuté délky se sčítají. */
 export function matchesDuration(r: Recipe, d: DurationFilter = DEFAULT_DURATION): boolean {
   if (r.meal === 'breakfast') return true;
   const t = totalMin(r);
-  return (!!d.fast && t <= FAST) || (!!d.short && t <= HOUR) || (!!d.long && t > HOUR);
+  return (
+    (!!d.fast && t <= FAST) ||
+    (!!d.short && t <= HOUR) ||
+    (!!d.mid && t <= HOUR_HALF) ||
+    (!!d.long && t > HOUR) ||
+    (!!d.xlong && t > HOUR_HALF)
+  );
+}
+
+export type Difficulty = 'snadné' | 'střední' | 'náročné';
+
+/**
+ * Orientační obtížnost podle aktivní práce, času navíc a počtu surovin (web u receptů obtížnost
+ * neuvádí jednotně, proto je to náš odhad, ne údaj z originálu).
+ */
+export function difficulty(r: Recipe): Difficulty {
+  const score = r.min + (r.extra ?? 0) * 0.25 + (r.ing.length + (r.sides.length ? 1 : 0)) * 4;
+  return score <= 40 ? 'snadné' : score <= 65 ? 'střední' : 'náročné';
 }
 
 const ALL_STARCH = ['testoviny', 'ryze', 'knedliky', 'brambory'];
@@ -163,7 +187,7 @@ export const RECIPE_SITES: { name: string; domain?: string }[] = [
 
 /** Odkud recepty jsou. Vlastní recepty jsou bez odkazu na web. */
 export const OWN_SOURCE = 'Vlastní recepty';
-export const SOURCE_OPTIONS: string[] = [OWN_SOURCE, 'Toprecepty', 'Recepty.cz', 'Apetit', 'Kuchařka pro dceru', 'Vilgain', 'Mandimu'].filter((n) =>
+export const SOURCE_OPTIONS: string[] = [OWN_SOURCE, 'Toprecepty', 'Recepty.cz', 'Apetit', 'Kuchařka pro dceru', 'Vilgain', 'Mandimu (Jíme zdravě)'].filter((n) =>
   RECIPES.some((r) => sourceOf(r) === n),
 );
 

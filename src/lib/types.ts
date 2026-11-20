@@ -20,13 +20,13 @@ export interface Settings {
   /** Bez masa a ryb (vejce, mléčné výrobky a luštěniny zůstávají). */
   noMeat: boolean;
   /** Délka vaření obědů a večeří (celkový čas): do 35 minut, do hodiny a / nebo nad hodinu. */
-  duration: { fast: boolean; short: boolean; long: boolean };
+  duration: { fast: boolean; short: boolean; long: boolean; mid?: boolean; xlong?: boolean };
   /** Z jakých webů mají být recepty (názvy zdrojů). Chybí = ze všech. */
   sources?: string[];
   /** Večeře uvařená dvojitě = oběd další den. */
   batch: boolean;
   /** Stejný oběd / večeře na tolik dní (1 = každý den jiné jídlo). */
-  repeat: { lunch: number; dinner: number };
+  repeat: { breakfast?: number; lunch: number; dinner: number };
   startDate: string;
 }
 

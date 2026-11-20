@@ -288,7 +288,7 @@ function run(input: PlanInput, lambda: number): { days: PlanDay[]; total: number
   const days: PlanDay[] = [];
   let total = 0;
   let missing = 0;
-  const repeatOf = (slot: Slot) => (slot === 'breakfast' ? 1 : Math.max(1, Math.min(4, settings.repeat?.[slot] ?? 1)));
+  const repeatOf = (slot: Slot) => Math.max(1, Math.min(4, settings.repeat?.[slot] ?? 1));
   const anyRepeat = repeatOf('lunch') > 1 || repeatOf('dinner') > 1;
   const batchOn = settings.batch && !anyRepeat;
 

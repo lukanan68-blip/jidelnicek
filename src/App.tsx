@@ -25,9 +25,12 @@ const TABS: { id: Tab; label: string }[] = [
 /** Starší nastavení mělo „rychlý režim“ a jen dvě délky. Převede se na tři volby. */
 function migrateDuration(s: Partial<Settings> & { quick?: boolean }): DurationFilter {
   const d = (s.duration ?? {}) as Partial<DurationFilter>;
-  if (typeof d.fast === 'boolean') return { fast: d.fast, short: !!d.short, long: !!d.long };
+  if (typeof d.fast === 'boolean') {
+    // volba „nad hodinu“ zanikla: nahradila ji „do 1,5 hodiny“ a „nad hodinu a půl“
+    return { fast: d.fast, short: !!d.short, long: false, mid: !!d.mid || !!d.long, xlong: !!d.xlong || !!d.long };
+  }
   if (s.quick) return { fast: true, short: false, long: false };
-  return { fast: true, short: d.short !== false, long: d.long !== false };
+  return { fast: true, short: d.short !== false, long: false, mid: d.long !== false, xlong: d.long !== false };
 }
 
 export default function App() {
@@ -40,9 +43,9 @@ export default function App() {
     useDate: true,
     slots: { breakfast: true, lunch: true, dinner: true },
     noMeat: false,
-    duration: { fast: true, short: false, long: false },
+    duration: { fast: true, short: false, long: false, mid: false, xlong: false },
     batch: false,
-    repeat: { lunch: 1, dinner: 1 },
+    repeat: { breakfast: 1, lunch: 1, dinner: 1 },
     startDate: today,
   });
   const [history, setHistory] = useStored<HistoryEntry[]>('jid.history', [], migrateHistory);
@@ -61,8 +64,8 @@ export default function App() {
     ...settings,
     duration: migrateDuration(settings),
     noMeat: !!settings.noMeat,
-    sources: settings.sources?.filter((s) => SOURCE_OPTIONS.includes(s)) ?? SOURCE_OPTIONS,
-    repeat: { lunch: settings.repeat?.lunch ?? 1, dinner: settings.repeat?.dinner ?? 1 },
+    sources: settings.sources?.map((s) => (s === 'Mandimu' ? 'Mandimu (Jíme zdravě)' : s)).filter((s) => SOURCE_OPTIONS.includes(s)) ?? SOURCE_OPTIONS,
+    repeat: { breakfast: settings.repeat?.breakfast ?? 1, lunch: settings.repeat?.lunch ?? 1, dinner: settings.repeat?.dinner ?? 1 },
     useBudget: settings.useBudget !== false,
     useDate: settings.useDate !== false,
     startDate: settings.useDate === false || settings.startDate < today ? today : settings.startDate,

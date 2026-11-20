@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { INGREDIENT_MAP, STAPLE_IDS, UNIT_LABEL } from '../data/ingredients';
 import { dishIcon, iconOf, plateParts } from '../data/icons';
-import { FAST, HOUR, RECIPES, RECIPE_MAP, RECIPE_SITES, SOURCE_OPTIONS, recipeSearchUrl, sourceOf } from '../data/recipes';
+import { FAST, HOUR, HOUR_HALF, RECIPES, RECIPE_MAP, RECIPE_SITES, SOURCE_OPTIONS, difficulty, recipeSearchUrl, sourceOf } from '../data/recipes';
 import { agoLabel, daysBetween, dnyLabel, fmtAmount, fmtKc, fmtKcFine, fmtPrice, formatDay, formatShort, inStore, uid } from '../lib/format';
 import {
   amountCost,
@@ -19,7 +19,7 @@ import { HavePicker } from './HavePicker';
 import { PriceLines } from './PriceLines';
 import { StoreBadge } from './StoreBadge';
 import { StoreSelect } from './StoreSelect';
-import vegetables from '../assets/zelenina.jpg';
+import navrhImg from '../assets/prekvapeni_jidlo.gif';
 import { SLOT_ICON, SLOT_LABEL, SLOT_ORDER, type HistoryEntry, type Plan, type PlanMeal, type Settings } from '../lib/types';
 
 interface Props {
@@ -52,10 +52,13 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
   const hasDate = plan ? plan.settings.useDate !== false : true;
   const over = plan && hasBudget ? total > plan.settings.budget + 0.5 : false;
   const anySlot = SLOT_ORDER.some((s) => settings.slots[s]);
-  const anyDuration = settings.duration.fast || settings.duration.short || settings.duration.long;
+  const D = settings.duration;
+  const anyDuration = D.fast || D.short || !!D.mid || !!D.xlong;
+  const allDurations = D.fast && D.short && !!D.mid && !!D.xlong;
   const hasMains = settings.slots.lunch || settings.slots.dinner;
   const sources = settings.sources ?? SOURCE_OPTIONS;
   const noSource = sources.length === 0;
+  const filtersActive = sources.length < SOURCE_OPTIONS.length || settings.noMeat || !(allDurations);
   const sourceCount = (name: string, meal?: 'breakfast' | 'main') =>
     RECIPES.filter((r) => sourceOf(r) === name && (!meal || r.meal === meal)).length;
   const noBreakfastInSources = settings.slots.breakfast && !noSource && sources.every((s) => sourceCount(s, 'breakfast') === 0);
@@ -94,8 +97,8 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
             ))}
           </div>
           <div className="row">
-            <button className="mini" onClick={() => setSettings((s) => ({ ...s, sources: SOURCE_OPTIONS }))}>
-              Všechny
+            <button className="mini" onClick={() => setSettings((s) => ({ ...s, sources: SOURCE_OPTIONS }))} disabled={sources.length === SOURCE_OPTIONS.length}>
+              Smazat filtr (všechny zdroje)
             </button>
           </div>
           {noSource && (
@@ -197,22 +200,22 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
           </div>
         </div>
 
-        {(settings.slots.lunch || settings.slots.dinner) && (
+        {anySlot && (
           <div className="fsec" role="group" aria-label="Vařit stejné jídlo na víc dní">
             <div className="fsec-title">🔁 Vařit stejné jídlo na víc dní</div>
             <div className="grid2">
-              {(['lunch', 'dinner'] as const)
+              {(['breakfast', 'lunch', 'dinner'] as const)
                 .filter((slot) => settings.slots[slot])
                 .map((slot) => (
                   <label key={slot}>
-                    {slot === 'lunch' ? 'Stejný oběd na' : 'Stejná večeře na'}
+                    {slot === 'breakfast' ? 'Stejná snídaně na' : slot === 'lunch' ? 'Stejný oběd na' : 'Stejná večeře na'}
                     <select
                       value={settings.repeat[slot]}
                       onChange={(e) =>
                         setSettings((s) => ({
                           ...s,
                           repeat: { ...s.repeat, [slot]: Number(e.target.value) },
-                          batch: Number(e.target.value) > 1 ? false : s.batch,
+                          batch: Number(e.target.value) > 1 && slot !== 'breakfast' ? false : s.batch,
                         }))
                       }
                     >
@@ -225,7 +228,8 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
                   </label>
                 ))}
             </div>
-            <p className="hint">Jídlo se uvaří jednou a další dny se jí zbytky. Suroviny se nakoupí na všechny dny.</p>
+            <p className="hint">Jídlo se připraví jednou a další dny se jí zbytky. Suroviny se nakoupí na všechny dny.</p>
+            {settings.slots.lunch && settings.slots.dinner && (
             <label className="check">
               <input
                 type="checkbox"
@@ -238,6 +242,7 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
                 <small> – večeře se uvaří na 2 dny a druhý den je z ní oběd</small>
               </span>
             </label>
+            )}
           </div>
         )}
 
@@ -285,15 +290,33 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
               <label className="check">
                 <input
                   type="checkbox"
-                  checked={settings.duration.long}
-                  onChange={(e) => setSettings((s) => ({ ...s, duration: { ...s.duration, long: e.target.checked } }))}
+                  checked={!!settings.duration.mid}
+                  onChange={(e) => setSettings((s) => ({ ...s, duration: { ...s.duration, mid: e.target.checked } }))}
                 />
                 <span>
-                  Jídla nad hodinu
-                  <small> – pečení, dušení, guláše</small>
+                  Jídla do 1,5 hodiny
+                  <small> – celkem do {HOUR_HALF} min</small>
+                </span>
+              </label>
+              <label className="check">
+                <input
+                  type="checkbox"
+                  checked={!!settings.duration.xlong}
+                  onChange={(e) => setSettings((s) => ({ ...s, duration: { ...s.duration, xlong: e.target.checked } }))}
+                />
+                <span>
+                  Jídla nad hodinu a půl
+                  <small> – pečení, dušení, guláše, nad {HOUR_HALF} min</small>
                 </span>
               </label>
             </div>
+            {!allDurations && (
+              <div className="row">
+                <button className="mini" onClick={() => setSettings((s) => ({ ...s, duration: { fast: true, short: true, long: false, mid: true, xlong: true } }))}>
+                  Smazat filtr délky
+                </button>
+              </div>
+            )}
             {!anyDuration && (
               <p role="alert" className="error">
                 Zaškrtni aspoň jednu délku, jinak nemám z čeho vybírat.
@@ -303,6 +326,21 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
         )}
 
         <div className="row fsec">
+          {filtersActive && (
+            <button
+              className="mini"
+              onClick={() =>
+                setSettings((s) => ({
+                  ...s,
+                  sources: SOURCE_OPTIONS,
+                  noMeat: false,
+                  duration: { fast: true, short: true, long: false, mid: true, xlong: true },
+                }))
+              }
+            >
+              Smazat všechny filtry
+            </button>
+          )}
           <button className="primary" onClick={onGenerate} disabled={!anySlot || noSource || (hasMains && !anyDuration)}>
             {plan ? 'Navrhnout znovu' : 'Navrhnout jídelníček'}
           </button>
@@ -322,7 +360,7 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
         <>
           <section className="card navrh">
             <h2 className="navrh-title">Návrh</h2>
-            <img className="navrh-img" src={vegetables} alt="Vyskládaná čerstvá zelenina" loading="lazy" />
+            <img className="navrh-img" src={navrhImg} alt="Animace: dárek se otevře a překvapením je jídlo" />
           </section>
 
           <section className={`card summary ${over ? 'warn' : 'ok'}`} role="status">
@@ -455,7 +493,7 @@ function MealCard({ plan, dayIdx, date, meal, history, setHistory, pf, pfAll, to
         <span className="slot">
           <span aria-hidden="true">{SLOT_ICON[meal.slot]}</span> {SLOT_LABEL[meal.slot]}
         </span>
-        <span className="cost">{meal.leftover ? 'zbytky' : fmtKc(cost)}</span>
+        <span className="cost">{meal.leftover ? (meal.slot === 'breakfast' ? 'stejná' : 'zbytky') : fmtKc(cost)}</span>
       </div>
       {recipe.photo && (
         <figure className="photo">
@@ -513,10 +551,14 @@ function MealCard({ plan, dayIdx, date, meal, history, setHistory, pf, pfAll, to
         <span className="dish">{dish}</span>
         <span className="parts">{plateParts(recipe, meal.sideId).filter((x) => x !== dish).join(' ')}</span>
       </div>
-      <h4>{recipe.name}</h4>
+      <h4>
+        {recipe.name} <span className="diff">({difficulty(recipe)})</span>
+      </h4>
       <p className="meta">
         {meal.leftover
-          ? 'Stejné jídlo jako dřív, jíš zbytky, nevaří se.'
+          ? meal.slot === 'breakfast'
+            ? 'Stejná snídaně jako dřív, suroviny už máš nakoupené.'
+            : 'Stejné jídlo jako dřív, jíš zbytky, nevaří se.'
           : `⏱ ${recipe.min} min${recipe.extra ? ` + ${recipe.extra} min samo` : ''}${mult > 1 ? ` · uvaříš najednou na ${mult} ${dnyLabel(mult)}` : ''}`}
       </p>
 
@@ -701,7 +743,7 @@ function MealCard({ plan, dayIdx, date, meal, history, setHistory, pf, pfAll, to
                       <span className="ico" aria-hidden="true">
                         {dishIcon(r, a.sideId)}
                       </span>{' '}
-                      {r.name}
+                      {r.name} <span className="diff">({difficulty(r)})</span>
                     </b>
                     <small>
                       ⏱ {r.min}
