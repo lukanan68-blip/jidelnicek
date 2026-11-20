@@ -1,11 +1,13 @@
 import { useCallback, useState } from 'react';
 
 /** useState, který si hodnotu pamatuje v prohlížeči (localStorage). Funguje i bez něj. */
-export function useStored<T>(key: string, initial: T): [T, (v: T | ((prev: T) => T)) => void] {
+export function useStored<T>(key: string, initial: T, migrate?: (v: T) => T): [T, (v: T | ((prev: T) => T)) => void] {
   const [value, setValue] = useState<T>(() => {
     try {
       const raw = localStorage.getItem(key);
-      return raw ? (JSON.parse(raw) as T) : initial;
+      if (!raw) return initial;
+      const v = JSON.parse(raw) as T;
+      return migrate ? migrate(v) : v;
     } catch {
       return initial;
     }

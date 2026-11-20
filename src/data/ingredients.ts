@@ -50,7 +50,10 @@ export const INGREDIENTS: Ingredient[] = [
   { id: 'tvaroh', name: 'Tvaroh (250 g)', unit: 'ks', price: 22, kind: 'dairy' },
   { id: 'jogurt', name: 'Bílý jogurt (kelímek)', unit: 'ks', price: 12, kind: 'dairy' },
   { id: 'smetana', name: 'Smetana na vaření (200 ml)', unit: 'ks', price: 20, kind: 'dairy' },
-  { id: 'syr', name: 'Sýr (eidam)', unit: 'kg', price: 190, kind: 'dairy' },
+  { id: 'eidam', name: 'Eidam', unit: 'kg', price: 190, kind: 'dairy' },
+  { id: 'mozzarella', name: 'Mozzarella', unit: 'kg', price: 230, kind: 'dairy' },
+  { id: 'parmezan', name: 'Parmezán', unit: 'kg', price: 600, kind: 'dairy' },
+  { id: 'hermelin', name: 'Hermelín', unit: 'kg', price: 280, kind: 'dairy' },
   { id: 'zakysana-smetana', name: 'Zakysaná smetana (190 g)', unit: 'ks', price: 22, kind: 'dairy' },
 
   // zelenina, ovoce, ostatní

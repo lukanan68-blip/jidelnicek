@@ -29,3 +29,18 @@ export const OWN_PHOTOS: Record<string, NonNullable<Recipe['photo']>> = {
   'testoviny-spenat': { url: 'https://www.apetitonline.cz/sites/default/files/styles/medium/public/recepty/20260122_T%C4%9Bstoviny_se_smetanou_%C5%A1pen%C3%A1tem_a_s%C3%BDrem_foto-5.jpg.webp', site: 'Apetit', link: 'https://www.apetitonline.cz/recept/testoviny-se-smetanou-spenatem-syrem', similar: true },
   'ryba-zelenina': { url: 'https://ms3.ostium.cz/instance/web-recepty/jl85s6s6/h276w407t.jpg', site: 'Recepty.cz', link: 'https://www.recepty.cz/recept/losos-na-pare-s-restovanou-zeleninou-161248', similar: true },
 };
+
+/**
+ * Přímý odkaz na podobný recept na webu pro naše recepty, ke kterým nemáme fotku.
+ * (U receptů s fotkou je odkaz u fotky.) Klíč je id receptu.
+ */
+export const OWN_LINKS: Record<string, { site: string; url: string }> = {
+  'bolonske': { site: 'Mandimu', url: 'https://mandimu.cz/blogs/recepty/bolonska-omacka' },
+  'lasagne': { site: 'Mandimu', url: 'https://mandimu.cz/blogs/recepty/rychle-lasagne' },
+  'zapecene-testoviny': { site: 'Mandimu', url: 'https://mandimu.cz/blogs/recepty/zapecene-testoviny-se-zeleninou' },
+  'testoviny-tunak': { site: 'Recepty.cz', url: 'https://www.recepty.cz/recept/penne-s-tunakem-a-kukurici-154112' },
+  'zapeceny-kvetak': { site: 'Apetit', url: 'https://www.apetitonline.cz/recept/zapeceny-kvetak-s-bramborami' },
+  'omeleta-syr': { site: 'Vilgain', url: 'https://vilgain.cz/syrova-omeleta' },
+  'omeleta-sunka': { site: 'Vilgain', url: 'https://vilgain.cz/syrova-omeleta' },
+  'kase-banan': { site: 'Mandimu', url: 'https://mandimu.cz/blogs/recepty/ovesna-kase-s-karamelizovanym-bananem' },
+};

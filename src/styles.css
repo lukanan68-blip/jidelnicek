@@ -927,3 +927,48 @@ input:disabled {
 .have-summary p {
   margin: 2px 0;
 }
+
+/* oddělené části zadání */
+.fsec {
+  border-top: 4px solid var(--line);
+  padding-top: 14px;
+  margin-top: 18px;
+}
+.fsec legend,
+.fsec-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 8px;
+  padding: 0;
+}
+.row.fsec {
+  display: flex;
+}
+
+/* odkaz na recept hned pod fotkou */
+.recipe-link {
+  margin: 6px 0 10px;
+}
+.recipe-btn {
+  display: block;
+  text-align: center;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  font-weight: 700;
+  text-decoration: none;
+  border: 1px solid var(--accent);
+}
+.recipe-link .sites {
+  margin-top: 6px;
+}
+
+.site-links.search {
+  align-items: center;
+}
+.site-links.search span {
+  font-weight: 700;
+  font-size: 0.92rem;
+}

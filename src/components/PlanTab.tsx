@@ -78,8 +78,8 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
 
       <section className="card">
         <h2>Zadání</h2>
-        <fieldset>
-          <legend>Odkud mají být recepty</legend>
+        <div className="fsec" role="group" aria-label="Odkud mají být recepty">
+          <div className="fsec-title">Odkud mají být recepty</div>
           <div className="chips sources">
             {SOURCE_OPTIONS.map((name) => (
               <label className="check" key={name}>
@@ -104,7 +104,9 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
           {noBreakfastInSources && (
             <p className="hint">Z vybraných zdrojů nejsou snídaně, ty se vezmou z ostatních.</p>
           )}
-        </fieldset>
+        </div>
+        <div className="fsec">
+        <div className="fsec-title">Počet dní, rozpočet a datum</div>
         <div className="grid2">
           <label>
             Počet dní
@@ -161,14 +163,17 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
             </label>
           </div>
         </div>
+        </div>
 
-        <label className="field-wide">
-          Kde nakupuješ
-          <StoreSelect value={shopStore} onChange={setShopStore} withDeals={storesWithDeals} />
-        </label>
+        <div className="fsec">
+          <div className="fsec-title">Kde nakupuješ</div>
+          <label className="field-wide">
+            <StoreSelect value={shopStore} onChange={setShopStore} withDeals={storesWithDeals} />
+          </label>
+        </div>
 
-        <fieldset>
-          <legend>Co plánovat</legend>
+        <div className="fsec" role="group" aria-label="Co plánovat">
+          <div className="fsec-title">Co plánovat</div>
           <div className="chips">
             {SLOT_ORDER.map((slot) => (
               <label key={slot} className="check">
@@ -181,11 +186,11 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
               </label>
             ))}
           </div>
-        </fieldset>
+        </div>
 
         {(settings.slots.lunch || settings.slots.dinner) && (
-          <fieldset>
-            <legend>Vařit stejné jídlo na víc dní</legend>
+          <div className="fsec" role="group" aria-label="Vařit stejné jídlo na víc dní">
+            <div className="fsec-title">Vařit stejné jídlo na víc dní</div>
             <div className="grid2">
               {(['lunch', 'dinner'] as const)
                 .filter((slot) => settings.slots[slot])
@@ -224,9 +229,11 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
                 <small> – večeře se uvaří na 2 dny a druhý den je z ní oběd</small>
               </span>
             </label>
-          </fieldset>
+          </div>
         )}
 
+        <div className="fsec">
+        <div className="fsec-title">Maso</div>
         <label className="check">
           <input
             type="checkbox"
@@ -238,10 +245,11 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
             <small> – i bez ryb a šunky, vejce, sýry a luštěniny zůstávají</small>
           </span>
         </label>
+        </div>
 
         {hasMains && (
-          <fieldset>
-            <legend>Délka vaření (obědy a večeře, celkový čas)</legend>
+          <div className="fsec" role="group" aria-label="Délka vaření (obědy a večeře, celkový čas)">
+            <div className="fsec-title">Délka vaření (obědy a večeře, celkový čas)</div>
             <div className="chips">
               <label className="check">
                 <input
@@ -282,10 +290,10 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
                 Zaškrtni aspoň jednu délku, jinak nemám z čeho vybírat.
               </p>
             )}
-          </fieldset>
+          </div>
         )}
 
-        <div className="row">
+        <div className="row fsec">
           <button className="primary" onClick={onGenerate} disabled={!anySlot || noSource || (hasMains && !anyDuration)}>
             {plan ? 'Navrhnout znovu' : 'Navrhnout jídelníček'}
           </button>
@@ -334,7 +342,7 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
               {unusedHave.length > 0 && (
                 <p className="muted">
                   Nevyužito: {unusedHave.map((id) => `${iconOf(id)} ${INGREDIENT_MAP[id].name.replace(/\s*\(.*\)$/, '')}`).join(', ')}.
-                  Zkus Navrhnout znovu nebo Další možnosti u jídel.
+                  Zkus Navrhnout znovu nebo Najít další recepty u jídel.
                 </p>
               )}
             </section>
@@ -453,6 +461,38 @@ function MealCard({ plan, dayIdx, date, meal, history, setHistory, pf, pfAll, to
           </figcaption>
         </figure>
       )}
+      <div className="recipe-link">
+        {recipe.source ? (
+          <a className="recipe-btn" href={recipe.source.url} target="_blank" rel="noreferrer">
+            📖 Otevřít recept na {recipe.source.site} ↗
+          </a>
+        ) : recipe.similarLink ? (
+          <a className="recipe-btn" href={recipe.similarLink.url} target="_blank" rel="noreferrer">
+            📖 Podobný recept na {recipe.similarLink.site} ↗
+          </a>
+        ) : (
+          <div className="site-links search">
+            <span>Najít recept:</span>
+            {RECIPE_SITES.map((s) => (
+              <a key={s.name} href={recipeSearchUrl(recipe, s.domain)} target="_blank" rel="noreferrer">
+                {s.name}
+              </a>
+            ))}
+          </div>
+        )}
+        {(recipe.source || recipe.similarLink) && (
+          <details className="sites">
+            <summary>Najít jiný recept na webu</summary>
+            <div className="site-links">
+              {RECIPE_SITES.map((s) => (
+                <a key={s.name} href={recipeSearchUrl(recipe, s.domain)} target="_blank" rel="noreferrer">
+                  {s.name}
+                </a>
+              ))}
+            </div>
+          </details>
+        )}
+      </div>
       <div className="plate" aria-hidden="true">
         <span className="dish">{dish}</span>
         <span className="parts">{plateParts(recipe, meal.sideId).filter((x) => x !== dish).join(' ')}</span>
@@ -609,7 +649,7 @@ function MealCard({ plan, dayIdx, date, meal, history, setHistory, pf, pfAll, to
         <button className={eaten ? 'done' : ''} onClick={toggleEaten} aria-pressed={eaten}>
           {eaten ? '✓ Snědeno' : 'Snědeno'}
         </button>
-        {!meal.leftover && <button onClick={onMore}>Další možnosti</button>}
+        {!meal.leftover && <button onClick={onMore}>Najít další recepty</button>}
       </div>
       {!meal.leftover && meal.alts && meal.alts.length > 0 && (
         <div className="alts">
@@ -661,24 +701,6 @@ function MealCard({ plan, dayIdx, date, meal, history, setHistory, pf, pfAll, to
           </ul>
         </div>
       )}
-      {recipe.source && (
-        <p className="source">
-          Recept z webu{' '}
-          <a href={recipe.source.url} target="_blank" rel="noreferrer">
-            {recipe.source.site}
-          </a>
-        </p>
-      )}
-      <details className="sites">
-        <summary>Najít recept na webu</summary>
-        <div className="site-links">
-          {RECIPE_SITES.map((s) => (
-            <a key={s.name} href={recipeSearchUrl(recipe, s.domain)} target="_blank" rel="noreferrer">
-              {s.name}
-            </a>
-          ))}
-        </div>
-      </details>
     </article>
   );
 }

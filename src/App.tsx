@@ -7,6 +7,7 @@ import { ShoppingTab } from './components/ShoppingTab';
 import { leafletDiscounts } from './data/leaflets';
 import { SOURCE_OPTIONS, type DurationFilter } from './data/recipes';
 import { todayISO } from './lib/format';
+import { migrateDiscounts, migrateHistory, migrateIds, migratePrices } from './lib/migrate';
 import { chooseAlternative, generatePlan, makePriceFns, moreAlternatives } from './lib/planner';
 import type { Discount, HistoryEntry, Plan, PriceOverrides, Settings } from './lib/types';
 import { useStored } from './lib/useStored';
@@ -44,14 +45,14 @@ export default function App() {
     repeat: { lunch: 1, dinner: 1 },
     startDate: today,
   });
-  const [history, setHistory] = useStored<HistoryEntry[]>('jid.history', []);
-  const [discounts, setDiscounts] = useStored<Discount[]>('jid.discounts', []);
-  const [prices, setPrices] = useStored<PriceOverrides>('jid.prices', {});
+  const [history, setHistory] = useStored<HistoryEntry[]>('jid.history', [], migrateHistory);
+  const [discounts, setDiscounts] = useStored<Discount[]>('jid.discounts', [], migrateDiscounts);
+  const [prices, setPrices] = useStored<PriceOverrides>('jid.prices', {}, migratePrices);
   const [plan, setPlan] = useStored<Plan | null>('jid.plan', null);
   const [checked, setChecked] = useStored<Record<string, boolean>>('jid.checked', {});
   // kde nakupuji (prázdné = nejlevněji ve víc obchodech) a co mám doma
   const [shopStore, setShopStore] = useStored<string>('jid.shopStore', '');
-  const [have, setHave] = useStored<string[]>('jid.have', []);
+  const [have, setHave] = useStored<string[]>('jid.have', [], migrateIds);
 
   // slevy z letáků (součást aplikace) + ty, které si zadáš ručně
   const allDiscounts = useMemo(() => [...leafletDiscounts(), ...discounts], [discounts]);

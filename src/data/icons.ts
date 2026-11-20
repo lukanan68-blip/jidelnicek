@@ -38,7 +38,10 @@ export const INGREDIENT_ICON: Record<string, string> = {
   jogurt: '🥛',
   smetana: '🥛',
   'zakysana-smetana': '🥛',
-  syr: '🧀',
+  eidam: '🧀',
+  mozzarella: '🧀',
+  parmezan: '🧀',
+  hermelin: '🧀',
   // zelenina a ovoce
   cibule: '🧅',
   cesnek: '🧄',
