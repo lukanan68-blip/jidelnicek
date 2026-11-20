@@ -1,8 +1,8 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { iconOf } from '../data/icons';
 import { HISTORY_GROUPS, INGREDIENT_MAP } from '../data/ingredients';
 import { RECIPE_MAP } from '../data/recipes';
-import { addDays, agoLabel, daysBetween, formatShort, uid } from '../lib/format';
+import { addDays, agoLabel, daysBetween, dnyLabel, formatShort, uid } from '../lib/format';
 import { buildLast } from '../lib/planner';
 import type { HistoryEntry } from '../lib/types';
 
@@ -15,8 +15,19 @@ interface Props {
 export function HistoryTab({ history, setHistory, today }: Props) {
   const last = useMemo(() => buildLast(history).ing, [history]);
 
+  // kolik dní po sobě jsem to jedl (končí vybraným dnem)
+  const [streak, setStreak] = useState(1);
+
   function add(id: string, date: string) {
-    setHistory((h) => [...h, { id: uid(), date, ingredientIds: [id] }]);
+    setHistory((h) => {
+      const next = [...h];
+      for (let k = 0; k < streak; k++) {
+        const d = addDays(date, -k);
+        if (h.some((e) => e.date === d && !e.recipeId && e.ingredientIds.length === 1 && e.ingredientIds[0] === id)) continue;
+        next.push({ id: uid(), date: d, ingredientIds: [id] });
+      }
+      return next;
+    });
   }
 
   const log = [...history].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 20);
@@ -29,6 +40,23 @@ export function HistoryTab({ history, setHistory, today }: Props) {
           Zaklikni, kdy jsi naposledy jedl kterou přílohu, maso, zeleninu nebo ovoce. Jídelníček se podle toho rozloží tak, aby se
           střídalo. Stačí zhruba posledních 7 dní.
         </p>
+        <label className="streak">
+          Jedl jsem to
+          <select value={streak} onChange={(e) => setStreak(Number(e.target.value))}>
+            <option value={1}>jen jeden den</option>
+            {[2, 3, 4, 5, 6, 7].map((n) => (
+              <option key={n} value={n}>
+                {n} {dnyLabel(n)} po sobě
+              </option>
+            ))}
+          </select>
+        </label>
+        {streak > 1 && (
+          <p className="hint">
+            Když klepneš třeba na „Včera“, zapíše se včerejšek a {streak - 1} {dnyLabel(streak - 1)} před ním. U „Dnes“ je to dnešek
+            a předchozí dny.
+          </p>
+        )}
       </section>
 
       {HISTORY_GROUPS.map((g) => (

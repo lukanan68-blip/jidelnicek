@@ -34,6 +34,7 @@
 
 body {
   margin: 0;
+  position: relative;
   background: var(--bg);
   color: var(--text);
   font: 16px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -64,7 +65,8 @@ nav {
   padding: 8px 0 12px;
   position: sticky;
   top: 0;
-  background: var(--bg);
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(6px);
   z-index: 5;
   scrollbar-width: none;
 }
@@ -112,7 +114,7 @@ h4 {
 }
 
 .card {
-  background: var(--card);
+  background: color-mix(in srgb, var(--card) 90%, transparent);
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 16px;
@@ -285,12 +287,17 @@ a {
 
 .meals {
   display: grid;
-  gap: 10px;
+  gap: 0;
 }
 .meal {
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 12px;
+  border: 0;
+  border-top: 4px solid var(--line);
+  border-radius: 0;
+  padding: 14px 2px 12px;
+}
+.meals .meal:first-child {
+  border-top: 0;
+  padding-top: 4px;
 }
 .meal.eaten {
   opacity: 0.65;
@@ -298,10 +305,23 @@ a {
 .meal-head {
   display: flex;
   justify-content: space-between;
-  font-size: 0.85rem;
-  color: var(--muted);
+  align-items: center;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+.meal-head .slot {
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  padding: 4px 12px;
+  border-radius: 999px;
+}
+.meal-head .cost {
+  font-size: 0.95rem;
+  color: var(--muted);
 }
 .meta {
   margin: 0 0 6px;
@@ -971,4 +991,90 @@ input:disabled {
 .site-links.search span {
   font-weight: 700;
   font-size: 0.92rem;
+}
+
+.fsec-title .fsec-logos {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: 10px;
+  vertical-align: middle;
+}
+.fsec-logos .store-logo {
+  height: 20px;
+  width: auto;
+}
+
+/* Návrh: velký nadpis a obrázek, který odděluje zadání od výsledku */
+.card.navrh {
+  padding: 0;
+  overflow: hidden;
+  border-width: 0;
+}
+.navrh-title {
+  margin: 0;
+  padding: 18px 16px 12px;
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--accent-dark);
+}
+.navrh-img {
+  display: block;
+  width: 100%;
+  max-height: 260px;
+  object-fit: cover;
+}
+
+.pack,
+.shop .amt small.pack {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-style: normal;
+}
+.shop .amt small.pack {
+  display: block;
+}
+.pack-total {
+  margin: 6px 0 0;
+}
+.ings em.pack {
+  display: block;
+}
+.ings li {
+  align-items: center;
+}
+.ings li > span:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ings .have-btn {
+  align-self: center;
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 0 10px;
+}
+.ings .tag {
+  align-self: center;
+  flex: 0 0 auto;
+}
+
+/* ovoce a zelenina jako jemné pozadí celé aplikace */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: url('./assets/zelenina.jpg') center / cover no-repeat;
+  opacity: 0.13;
+}
+@media (prefers-color-scheme: dark) {
+  body::after {
+    opacity: 0.08;
+  }
+}
+.streak {
+  max-width: 280px;
+  margin-top: 8px;
 }

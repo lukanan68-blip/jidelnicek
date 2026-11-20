@@ -1,6 +1,6 @@
-import { INGREDIENT_MAP, STAPLE_IDS } from '../data/ingredients';
+import { INGREDIENT_MAP, PACKS, STAPLE_IDS } from '../data/ingredients';
 import { RECIPES, RECIPE_MAP, hasMeat, matchesDuration, sourceOf, type DurationFilter, type MealType, type Recipe } from '../data/recipes';
-import { addDays, daysBetween, uid } from './format';
+import { addDays, daysBetween, fmtAmount, uid } from './format';
 import {
   SLOT_ORDER,
   type Slot,
@@ -73,6 +73,16 @@ export function makePriceFns(
 
 export function amountCost(id: string, amount: number, price: number): number {
   return INGREDIENT_MAP[id].unit === 'ks' ? amount * price : (amount / 1000) * price;
+}
+
+/** Kolik balení je potřeba a kolik stojí, když se kupují celá balení. Bez balení (na váhu, po kuse) vrací null. */
+export function packInfo(id: string, amount: number, unitPrice: number): { packs: number; packAmount: number; cost: number; label: string } | null {
+  const ing = INGREDIENT_MAP[id];
+  const packAmount = PACKS[id];
+  if (!ing || !packAmount || packAmount <= 1) return null;
+  const packs = Math.max(1, Math.ceil(amount / packAmount - 0.05));
+  const cost = packs * amountCost(id, packAmount, unitPrice);
+  return { packs, packAmount, cost, label: (packs > 1 ? `${packs}× ` : '') + fmtAmount(ing.unit, packAmount) };
 }
 
 export function sideAmount(recipe: Recipe, sideId: string): number {

@@ -1,6 +1,7 @@
 export type Slot = 'breakfast' | 'lunch' | 'dinner';
 
 export const SLOT_ORDER: Slot[] = ['breakfast', 'lunch', 'dinner'];
+export const SLOT_ICON: Record<Slot, string> = { breakfast: '🥐', lunch: '🍲', dinner: '🍽️' };
 export const SLOT_LABEL: Record<Slot, string> = {
   breakfast: 'Snídaně',
   lunch: 'Oběd',

@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { UNIT_LABEL } from '../data/ingredients';
 import { iconOf } from '../data/icons';
 import { fmtAmount, fmtKc, fmtPrice, inStore } from '../lib/format';
-import { buildShopping, compareStores, type PriceFns, type ShopRow } from '../lib/planner';
+import { buildShopping, compareStores, packInfo, type PriceFns, type ShopRow } from '../lib/planner';
 import type { Plan } from '../lib/types';
 import { StoreBadge } from './StoreBadge';
 import { StoreSelect } from './StoreSelect';
@@ -69,14 +69,21 @@ export function ShoppingTab({
 
   const sum = (rs: ShopRow[]) => rs.reduce((s, r) => s + r.cost, 0);
   const total = sum(rows);
+  // když se kupují celá balení: u každé suroviny aspoň jedno balení
+  const packTotal = rows.reduce((s, r) => s + Math.max(r.cost, packInfo(r.id, r.amount, r.unitPrice)?.cost ?? 0), 0);
   const compare = compareStores(compareRows, pfAll);
   const keyOf = (r: ShopRow) => `${plan.id}:${r.id}`;
+
+  const packNote = (r: ShopRow) => {
+    const p = packInfo(r.id, r.amount, r.unitPrice);
+    return p ? ` (balení ${p.label} asi ${fmtKc(p.cost)})` : '';
+  };
 
   function copy() {
     const text = ordered
       .map(
         ([store, rs]) =>
-          `${store} (asi ${fmtKc(sum(rs))})\n` + rs.map((r) => `- ${r.name}: ${fmtAmount(r.unit, r.amount)}`).join('\n'),
+          `${store} (asi ${fmtKc(sum(rs))})\n` + rs.map((r) => `- ${r.name}: ${fmtAmount(r.unit, r.amount)}${packNote(r)}`).join('\n'),
       )
       .join('\n\n');
     navigator.clipboard?.writeText(text).catch(() => undefined);
@@ -107,9 +114,14 @@ export function ShoppingTab({
           {single
             ? `Všechny suroviny koupíš ${inStore(pf.store!)}. Co má v letáku slevu, je za akční cenu, ostatní za běžnou cenu (odhad). `
             : ''}
-          Cena je za množství, které se spotřebuje. V obchodě koupíš celá balení, takže skutečný účet bude o něco vyšší.
-          Sůl, olej a koření se nepočítají.
+          Cena je za množství, které se spotřebuje. Sůl, olej a koření se nepočítají.
         </p>
+        {packTotal > total + 1 && (
+          <p className="pack-total">
+            📦 Když koupíš celá nejmenší balení, zaplatíš v obchodě asi <b>{fmtKc(packTotal)}</b>. Část z toho ti zůstane na
+            příště.
+          </p>
+        )}
         <div className="row">
           <button onClick={copy}>Zkopírovat seznam</button>
         </div>
@@ -199,7 +211,10 @@ export function ShoppingTab({
                     Mám doma
                   </button>
                 </div>
-                <span className="amt">{fmtAmount(r.unit, r.amount)}</span>
+                <span className="amt">
+                  {fmtAmount(r.unit, r.amount)}
+                  {packNote(r) && <small className="pack">{packNote(r).trim()}</small>}
+                </span>
                 <span className="price">{fmtKc(r.cost)}</span>
               </li>
             ))}

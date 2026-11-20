@@ -8,6 +8,7 @@ import {
   buildLast,
   mealIngredients,
   mealMult,
+  packInfo,
   planCost,
   mealPricesByStore,
   planMealCost,
@@ -18,7 +19,8 @@ import { HavePicker } from './HavePicker';
 import { PriceLines } from './PriceLines';
 import { StoreBadge } from './StoreBadge';
 import { StoreSelect } from './StoreSelect';
-import { SLOT_LABEL, SLOT_ORDER, type HistoryEntry, type Plan, type PlanMeal, type Settings } from '../lib/types';
+import vegetables from '../assets/zelenina.jpg';
+import { SLOT_ICON, SLOT_LABEL, SLOT_ORDER, type HistoryEntry, type Plan, type PlanMeal, type Settings } from '../lib/types';
 
 interface Props {
   settings: Settings;
@@ -79,7 +81,7 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
       <section className="card">
         <h2>Zadání</h2>
         <div className="fsec" role="group" aria-label="Odkud mají být recepty">
-          <div className="fsec-title">Odkud mají být recepty</div>
+          <div className="fsec-title">📖 Odkud mají být recepty</div>
           <div className="chips sources">
             {SOURCE_OPTIONS.map((name) => (
               <label className="check" key={name}>
@@ -106,7 +108,7 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
           )}
         </div>
         <div className="fsec">
-        <div className="fsec-title">Počet dní, rozpočet a datum</div>
+        <div className="fsec-title">📅 💰 Počet dní, rozpočet a datum</div>
         <div className="grid2">
           <label>
             Počet dní
@@ -166,14 +168,21 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
         </div>
 
         <div className="fsec">
-          <div className="fsec-title">Kde nakupuješ</div>
+          <div className="fsec-title">
+            Kde nakupuješ
+            <span className="fsec-logos">
+              <StoreBadge store="Albert" />
+              <StoreBadge store="Lidl" />
+              <StoreBadge store="Kaufland" />
+            </span>
+          </div>
           <label className="field-wide">
             <StoreSelect value={shopStore} onChange={setShopStore} withDeals={storesWithDeals} />
           </label>
         </div>
 
         <div className="fsec" role="group" aria-label="Co plánovat">
-          <div className="fsec-title">Co plánovat</div>
+          <div className="fsec-title">🍽️ Co plánovat</div>
           <div className="chips">
             {SLOT_ORDER.map((slot) => (
               <label key={slot} className="check">
@@ -182,7 +191,7 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
                   checked={settings.slots[slot]}
                   onChange={(e) => setSettings((s) => ({ ...s, slots: { ...s.slots, [slot]: e.target.checked } }))}
                 />
-                {SLOT_LABEL[slot]}
+                <span aria-hidden="true">{SLOT_ICON[slot]}</span> {SLOT_LABEL[slot]}
               </label>
             ))}
           </div>
@@ -190,7 +199,7 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
 
         {(settings.slots.lunch || settings.slots.dinner) && (
           <div className="fsec" role="group" aria-label="Vařit stejné jídlo na víc dní">
-            <div className="fsec-title">Vařit stejné jídlo na víc dní</div>
+            <div className="fsec-title">🔁 Vařit stejné jídlo na víc dní</div>
             <div className="grid2">
               {(['lunch', 'dinner'] as const)
                 .filter((slot) => settings.slots[slot])
@@ -233,7 +242,7 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
         )}
 
         <div className="fsec">
-        <div className="fsec-title">Maso</div>
+        <div className="fsec-title">🥩 Maso</div>
         <label className="check">
           <input
             type="checkbox"
@@ -249,7 +258,7 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
 
         {hasMains && (
           <div className="fsec" role="group" aria-label="Délka vaření (obědy a večeře, celkový čas)">
-            <div className="fsec-title">Délka vaření (obědy a večeře, celkový čas)</div>
+            <div className="fsec-title">⏱️ Délka vaření (obědy a večeře, celkový čas)</div>
             <div className="chips">
               <label className="check">
                 <input
@@ -311,6 +320,11 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
 
       {plan && (
         <>
+          <section className="card navrh">
+            <h2 className="navrh-title">Návrh</h2>
+            <img className="navrh-img" src={vegetables} alt="Vyskládaná čerstvá zelenina" loading="lazy" />
+          </section>
+
           <section className={`card summary ${over ? 'warn' : 'ok'}`} role="status">
             <div className="big">
               Odhad: {fmtKc(total)} {hasBudget && <span>z {fmtKc(plan.settings.budget)}</span>}
@@ -438,7 +452,9 @@ function MealCard({ plan, dayIdx, date, meal, history, setHistory, pf, pfAll, to
   return (
     <article className={`meal ${eaten ? 'eaten' : ''}`}>
       <div className="meal-head">
-        <span className="slot">{SLOT_LABEL[meal.slot]}</span>
+        <span className="slot">
+          <span aria-hidden="true">{SLOT_ICON[meal.slot]}</span> {SLOT_LABEL[meal.slot]}
+        </span>
         <span className="cost">{meal.leftover ? 'zbytky' : fmtKc(cost)}</span>
       </div>
       {recipe.photo && (
@@ -618,6 +634,12 @@ function MealCard({ plan, dayIdx, date, meal, history, setHistory, pf, pfAll, to
                     {iconOf(id)}
                   </span>{' '}
                   {i.name} <em>{fmtAmount(i.unit, a)}</em>
+                  {!meal.leftover && !pf.has(id) && packInfo(id, a, pf.eff(id)) && (
+                    <em className="pack">
+                      {' '}
+                      (balení {packInfo(id, a, pf.eff(id))!.label} asi {fmtKc(packInfo(id, a, pf.eff(id))!.cost)})
+                    </em>
+                  )}
                   {!meal.leftover && (
                     <em className="ing-cost">
                       {' · '}

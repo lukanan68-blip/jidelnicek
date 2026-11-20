@@ -88,6 +88,19 @@ export const INGREDIENT_MAP: Record<string, Ingredient> = Object.fromEntries(
   INGREDIENTS.map((i) => [i.id, i]),
 );
 
+/**
+ * Nejmenší balení, které se dá v obchodě koupit (v g, ml nebo ks). Co se prodává na váhu nebo po kuse, tu není.
+ * Je to orientační, balení se v obchodech liší.
+ */
+export const PACKS: Record<string, number> = {
+  ryze: 500, brambory: 1000, testoviny: 500, kuskus: 500, bulgur: 500, pohanka: 500, knedliky: 1000, chleb: 500,
+  tortilla: 8, vlocky: 500,
+  'kureci-prsa': 500, 'kureci-stehna': 800, 'kure-cele': 1300, hoveze: 400, bucek: 300, mlete: 500, 'veprova-plec': 500,
+  klobasa: 250, sunka: 100, ryba: 400, vejce: 10, cocka: 500, 'cervena-cocka': 500,
+  eidam: 100, mozzarella: 125, parmezan: 100, hermelin: 100, mleko: 1000,
+  spenat: 450, hrasek: 450, zampiony: 250, cibule: 1000, mrkev: 1000, strouhanka: 200, mouka: 1000,
+};
+
 /** Suroviny, u kterých hlídáme, kdy jsme je jedli naposledy. */
 export const TRACKED_KINDS: Kind[] = ['side', 'protein'];
 
