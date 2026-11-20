@@ -1,6 +1,8 @@
+import { iconOf } from '../data/icons';
 import { INGREDIENT_MAP, UNIT_LABEL } from '../data/ingredients';
 import { LEAFLETS_UPDATED, LEAFLET_DEALS, LEAFLET_SOURCES } from '../data/leaflets';
 import { fmtPrice, formatShort } from '../lib/format';
+import { StoreBadge } from './StoreBadge';
 
 interface Props {
   today: string;
@@ -24,7 +26,7 @@ export function LeafletList({ today }: Props) {
           return (
             <details key={src.id} className="leaflet" open={deals.length > 0}>
               <summary>
-                <b>{src.title}</b>
+                <StoreBadge store={src.store} /> <b>{src.title}</b>
                 <span className="muted">
                   {' '}
                   · {formatShort(src.from)} – {formatShort(src.to)} · {status} · {deals.length} slev
@@ -44,6 +46,9 @@ export function LeafletList({ today }: Props) {
                     return (
                       <li key={i}>
                         <span>
+                          <span className="ico" aria-hidden="true">
+                            {iconOf(d.ingredientId)}
+                          </span>{' '}
                           <b>{ing.name}</b> {fmtPrice(d.price)}/{UNIT_LABEL[ing.unit]}
                           <small className="muted">
                             {' '}

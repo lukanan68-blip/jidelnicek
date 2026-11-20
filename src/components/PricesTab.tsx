@@ -1,3 +1,4 @@
+import { iconOf } from '../data/icons';
 import { INGREDIENTS, UNIT_LABEL } from '../data/ingredients';
 import type { PriceOverrides } from '../lib/types';
 
@@ -24,7 +25,12 @@ export function PricesTab({ prices, setPrices }: Props) {
           {INGREDIENTS.map((i) => (
             <li key={i.id}>
               <label>
-                <span>{i.name}</span>
+                <span>
+                  <span className="ico" aria-hidden="true">
+                    {iconOf(i.id)}
+                  </span>{' '}
+                  {i.name}
+                </span>
                 <span className="price-in">
                   <input
                     inputMode="decimal"

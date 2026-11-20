@@ -5,9 +5,9 @@ import { PlanTab } from './components/PlanTab';
 import { PricesTab } from './components/PricesTab';
 import { ShoppingTab } from './components/ShoppingTab';
 import { leafletDiscounts } from './data/leaflets';
-import { DEFAULT_DURATION } from './data/recipes';
+import type { DurationFilter } from './data/recipes';
 import { todayISO } from './lib/format';
-import { generatePlan, makePriceFns, swapMeal } from './lib/planner';
+import { chooseAlternative, generatePlan, makePriceFns, moreAlternatives } from './lib/planner';
 import type { Discount, HistoryEntry, Plan, PriceOverrides, Settings } from './lib/types';
 import { useStored } from './lib/useStored';
 
@@ -21,6 +21,14 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'prices', label: 'Ceny' },
 ];
 
+/** Starší nastavení mělo „rychlý režim“ a jen dvě délky. Převede se na tři volby. */
+function migrateDuration(s: Partial<Settings> & { quick?: boolean }): DurationFilter {
+  const d = (s.duration ?? {}) as Partial<DurationFilter>;
+  if (typeof d.fast === 'boolean') return { fast: d.fast, short: !!d.short, long: !!d.long };
+  if (s.quick) return { fast: true, short: false, long: false };
+  return { fast: true, short: d.short !== false, long: d.long !== false };
+}
+
 export default function App() {
   const today = todayISO();
   const [tab, setTab] = useState<Tab>('plan');
@@ -30,9 +38,8 @@ export default function App() {
     useBudget: true,
     useDate: true,
     slots: { breakfast: true, lunch: true, dinner: true },
-    quick: true,
     noMeat: false,
-    duration: DEFAULT_DURATION,
+    duration: { fast: true, short: false, long: false },
     batch: false,
     startDate: today,
   });
@@ -41,13 +48,16 @@ export default function App() {
   const [prices, setPrices] = useStored<PriceOverrides>('jid.prices', {});
   const [plan, setPlan] = useStored<Plan | null>('jid.plan', null);
   const [checked, setChecked] = useStored<Record<string, boolean>>('jid.checked', {});
+  // kde nakupuji (prázdné = nejlevněji ve víc obchodech) a co mám doma
+  const [shopStore, setShopStore] = useStored<string>('jid.shopStore', '');
+  const [have, setHave] = useStored<string[]>('jid.have', []);
 
   // slevy z letáků (součást aplikace) + ty, které si zadáš ručně
   const allDiscounts = useMemo(() => [...leafletDiscounts(), ...discounts], [discounts]);
   // starý uložený začátek v minulosti neposouvá plán do minulosti
   const effectiveSettings: Settings = {
     ...settings,
-    duration: { ...DEFAULT_DURATION, ...settings.duration },
+    duration: migrateDuration(settings),
     noMeat: !!settings.noMeat,
     useBudget: settings.useBudget !== false,
     useDate: settings.useDate !== false,
@@ -56,18 +66,39 @@ export default function App() {
 
   // slevy se berou k prvnímu dni plánu (plán na pondělí použije pondělní leták)
   const refDate = plan ? (plan.settings.startDate < today ? today : plan.settings.startDate) : effectiveSettings.startDate;
-  const pf = useMemo(() => makePriceFns(prices, allDiscounts, refDate), [prices, allDiscounts, refDate]);
+  // pfAll = všechny obchody (pro porovnání), pf = podle zvoleného způsobu nákupu
+  const pfAll = useMemo(() => makePriceFns(prices, allDiscounts, refDate, { have }), [prices, allDiscounts, refDate, have]);
+  const pf = useMemo(
+    () => (shopStore ? makePriceFns(prices, allDiscounts, refDate, { store: shopStore, have }) : pfAll),
+    [prices, allDiscounts, refDate, have, shopStore, pfAll],
+  );
+  const toggleHave = (id: string) => setHave((h) => (h.includes(id) ? h.filter((x) => x !== id) : [...h, id]));
+
 
   function onGenerate() {
     const seed = Math.floor(Math.random() * 1e9);
-    setPlan(generatePlan({ settings: effectiveSettings, history, discounts: allDiscounts, prices, today: effectiveSettings.startDate, seed }));
+    setPlan(generatePlan({
+        settings: effectiveSettings,
+        history,
+        discounts: allDiscounts,
+        prices,
+        today: effectiveSettings.startDate,
+        seed,
+        store: shopStore || undefined,
+        have,
+      }));
     setChecked({});
   }
 
-  function onSwap(dayIdx: number, mealIdx: number) {
+  function onChoose(dayIdx: number, mealIdx: number, altIdx: number) {
+    if (!plan) return;
+    setPlan(chooseAlternative(plan, dayIdx, mealIdx, altIdx));
+  }
+
+  function onMore(dayIdx: number, mealIdx: number) {
     if (!plan) return;
     const seed = Math.floor(Math.random() * 1e9);
-    setPlan(swapMeal(plan, dayIdx, mealIdx, { history, discounts: allDiscounts, prices, today: refDate }, seed));
+    setPlan(moreAlternatives(plan, dayIdx, mealIdx, { history, discounts: allDiscounts, prices, today: refDate, store: shopStore || undefined, have }, seed));
   }
 
   return (
@@ -94,13 +125,32 @@ export default function App() {
             history={history}
             setHistory={setHistory}
             pf={pf}
+            pfAll={pfAll}
             today={today}
+            shopStore={shopStore}
+            setShopStore={setShopStore}
+            storesWithDeals={pfAll.stores}
+            toggleHave={toggleHave}
             onGenerate={onGenerate}
-            onSwap={onSwap}
+            onChoose={onChoose}
+            onMore={onMore}
             goTo={setTab}
           />
         )}
-        {tab === 'shop' && <ShoppingTab plan={plan} pf={pf} checked={checked} setChecked={setChecked} goTo={setTab} />}
+        {tab === 'shop' && (
+          <ShoppingTab
+            plan={plan}
+            pf={pf}
+            pfAll={pfAll}
+            checked={checked}
+            setChecked={setChecked}
+            shopStore={shopStore}
+            setShopStore={setShopStore}
+            toggleHave={toggleHave}
+            clearHave={() => setHave([])}
+            goTo={setTab}
+          />
+        )}
         {tab === 'history' && <HistoryTab history={history} setHistory={setHistory} today={today} />}
         {tab === 'flyers' && <FlyersTab discounts={discounts} setDiscounts={setDiscounts} prices={prices} today={today} />}
         {tab === 'prices' && <PricesTab prices={prices} setPrices={setPrices} />}

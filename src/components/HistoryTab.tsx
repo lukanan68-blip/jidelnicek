@@ -1,4 +1,5 @@
 import { useMemo, useRef } from 'react';
+import { iconOf } from '../data/icons';
 import { HISTORY_GROUPS, INGREDIENT_MAP } from '../data/ingredients';
 import { RECIPE_MAP } from '../data/recipes';
 import { addDays, agoLabel, daysBetween, formatShort, uid } from '../lib/format';
@@ -43,7 +44,12 @@ export function HistoryTab({ history, setHistory, today }: Props) {
                 return (
                   <li key={i.id}>
                     <div className="hist-name">
-                      <b>{i.name}</b>
+                      <b>
+                        <span className="ico" aria-hidden="true">
+                          {iconOf(i.id)}
+                        </span>{' '}
+                        {i.name}
+                      </b>
                       <span className={d ? '' : 'muted'}>
                         {d ? `${agoLabel(Math.max(0, daysBetween(d, today)))} (${formatShort(d)})` : 'bez záznamu'}
                       </span>

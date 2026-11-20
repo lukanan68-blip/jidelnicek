@@ -1,4 +1,5 @@
 import { MEAT_IDS } from './ingredients';
+import { OWN_PHOTOS } from './photos-own';
 import { WEB_RECIPES } from './recipes-web';
 
 export type MealType = 'breakfast' | 'main';
@@ -23,6 +24,16 @@ export interface Recipe {
   search?: string;
   /** Odkud je recept (suroviny a čas), s odkazem na originál. */
   source?: { site: string; url: string };
+  /** Fotka hotového jídla z webu s receptem (odkaz na obrázek, nic se nekopíruje). */
+  photo?: {
+    url: string;
+    /** Název webu, odkud fotka je. */
+    site: string;
+    /** Odkaz na recept, ke kterému fotka patří. */
+    link: string;
+    /** true = fotka podobného jídla, ne přímo tohoto receptu. */
+    similar?: boolean;
+  };
 }
 
 /** Jídlo obsahuje maso nebo ryby. */
@@ -37,17 +48,25 @@ export function totalMin(r: Recipe): number {
   return r.min + (r.extra ?? 0);
 }
 
+/** Hranice pro rychlá jídla: celkový čas do tolika minut. */
+export const FAST = 35;
+
 export interface DurationFilter {
+  /** Do 35 minut celkem. */
+  fast: boolean;
+  /** Do hodiny celkem (zahrnuje i rychlá). */
   short: boolean;
+  /** Nad hodinu celkem. */
   long: boolean;
 }
 
-export const DEFAULT_DURATION: DurationFilter = { short: true, long: true };
+export const DEFAULT_DURATION: DurationFilter = { fast: true, short: true, long: true };
 
-/** Filtr se týká obědů a večeří. Snídaně jsou vždy rychlé a filtrem se nevyřazují. */
+/** Filtr se týká obědů a večeří. Snídaně jsou vždy rychlé a filtrem se nevyřazují. Zaškrtnuté délky se sčítají. */
 export function matchesDuration(r: Recipe, d: DurationFilter = DEFAULT_DURATION): boolean {
   if (r.meal === 'breakfast') return true;
-  return totalMin(r) <= HOUR ? d.short : d.long;
+  const t = totalMin(r);
+  return (!!d.fast && t <= FAST) || (!!d.short && t <= HOUR) || (!!d.long && t > HOUR);
 }
 
 const ALL_STARCH = ['testoviny', 'ryze', 'knedliky', 'brambory'];
@@ -116,7 +135,10 @@ const OWN_RECIPES: Recipe[] = [
 ];
 
 /** Naše recepty + recepty načtené z webů. */
-export const RECIPES: Recipe[] = [...OWN_RECIPES, ...WEB_RECIPES];
+export const RECIPES: Recipe[] = [
+  ...OWN_RECIPES.map((r) => (OWN_PHOTOS[r.id] ? { ...r, photo: OWN_PHOTOS[r.id] } : r)),
+  ...WEB_RECIPES,
+];
 
 export const RECIPE_MAP: Record<string, Recipe> = Object.fromEntries(RECIPES.map((r) => [r.id, r]));
 

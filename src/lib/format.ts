@@ -60,10 +60,17 @@ export function fmtPrice(n: number): string {
   return `${v.replace('.', ',')} Kč`;
 }
 
+/** Částka na desetinu koruny u drobných položek: 3,5 Kč, 22,4 Kč; od 100 Kč celé. */
+export function fmtKcFine(n: number): string {
+  if (n >= 100) return fmtKc(n);
+  const v = Math.round(n * 10) / 10;
+  return `${String(v).replace('.', ',')} Kč`;
+}
+
 export function fmtAmount(unit: Unit, amount: number): string {
   if (unit === 'ks') {
     const v = Math.round(amount * 10) / 10;
-    return `${v} ks`;
+    return `${String(v).replace('.', ',')} ks`;
   }
   const big = unit === 'kg' ? 'kg' : 'l';
   const small = unit === 'kg' ? 'g' : 'ml';
@@ -72,6 +79,20 @@ export function fmtAmount(unit: Unit, amount: number): string {
     return `${String(v).replace('.', ',')} ${big}`;
   }
   return `${Math.round(amount / 5) * 5 || 5} ${small}`;
+}
+
+/** „v Lidlu“, „v Albertu“…: 6. pád názvu obchodu s předložkou. */
+export function inStore(store: string): string {
+  const forms: Record<string, string> = {
+    Albert: 'v Albertu',
+    Lidl: 'v Lidlu',
+    Kaufland: 'v Kauflandu',
+    Billa: 'v Bille',
+    Tesco: 'v Tescu',
+    Globus: 'v Globusu',
+    Norma: 'v Normě',
+  };
+  return forms[store] ?? `v ${store}`;
 }
 
 export function uid(): string {

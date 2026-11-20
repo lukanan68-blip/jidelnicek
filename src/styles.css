@@ -555,3 +555,316 @@ input:disabled {
   margin: 4px 0 0;
   font-size: 0.9rem;
 }
+
+.where {
+  margin: 4px 0 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  font-size: 0.92rem;
+}
+.where ul {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+}
+.where li {
+  padding: 1px 0;
+}
+.where small {
+  color: var(--accent-dark);
+}
+.alts {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+}
+.alts h5 {
+  margin: 0 0 4px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.alts ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.alts li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+.alt-info {
+  display: grid;
+  min-width: 0;
+}
+.alt-info small {
+  color: var(--muted);
+}
+
+.plate {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0 4px;
+}
+.plate .dish {
+  font-size: 2rem;
+  line-height: 1;
+}
+.plate .parts {
+  font-size: 1.25rem;
+  letter-spacing: 0.08em;
+}
+.ico {
+  display: inline-block;
+  min-width: 1.4em;
+  text-align: center;
+}
+.store-totals {
+  list-style: none;
+  margin: 6px 0 4px;
+  padding: 0;
+}
+.store-totals li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+  border-bottom: 1px dashed var(--line);
+}
+
+.store-totals li.best b {
+  color: var(--accent-dark);
+}
+
+.photo {
+  margin: 6px 0 8px;
+}
+.photo img {
+  display: block;
+  width: 100%;
+  max-height: 200px;
+  object-fit: cover;
+  border-radius: 10px;
+  background: var(--accent-soft);
+}
+.photo figcaption {
+  margin-top: 2px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.alts li {
+  gap: 10px;
+}
+.alt-photo {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: var(--accent-soft);
+}
+.alt-info {
+  flex: 1 1 auto;
+}
+
+.store-totals b {
+  white-space: nowrap;
+}
+
+.field-wide {
+  margin: 4px 0 10px;
+}
+.shop li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.shop li > label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.have-btn,
+.mini {
+  min-height: 36px;
+  padding: 0 10px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  border-radius: 999px;
+}
+.have-btn.on {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-dark);
+}
+.ings .have-btn {
+  margin-left: auto;
+}
+.store-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.store-totals li.chosen {
+  background: var(--accent-soft);
+  border-radius: 8px;
+  padding-inline: 6px;
+}
+.have-line {
+  margin: 4px 0 0;
+}
+
+/* nákupní seznam: zaškrtávátko | název + „Mám doma“ pod ním | množství | cena */
+.shop li {
+  display: grid;
+  grid-template-columns: 24px 1fr auto auto;
+  gap: 4px 10px;
+  align-items: start;
+  padding: 8px 0;
+}
+.shop li > input {
+  margin-top: 2px;
+}
+.shop li .name {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+  min-width: 0;
+}
+.shop li .name label {
+  display: inline;
+  color: var(--text);
+  font-size: 1rem;
+}
+.shop li .have-btn {
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 0.8rem;
+}
+.shop li .amt,
+.shop li .price {
+  padding-top: 2px;
+  white-space: nowrap;
+}
+
+.by-store {
+  margin: 4px 0 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  font-size: 0.92rem;
+}
+.by-store ul {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+}
+.by-store li {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 0;
+  border-bottom: 1px dashed var(--line);
+}
+.by-store li:last-child {
+  border-bottom: 0;
+}
+.by-store li b {
+  margin-left: auto;
+  white-space: nowrap;
+}
+.by-store li.best b {
+  color: var(--accent-dark);
+}
+.by-store li.chosen {
+  background: var(--accent-soft);
+  border-radius: 6px;
+  padding-inline: 4px;
+}
+.by-store button.link {
+  min-height: 28px;
+  font-weight: 600;
+}
+
+.by-store details {
+  width: 100%;
+}
+.by-store summary {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 36px;
+  cursor: pointer;
+  list-style: none;
+  color: var(--text);
+}
+.by-store summary::-webkit-details-marker {
+  display: none;
+}
+.by-store summary::before {
+  content: '▸';
+  color: var(--accent-dark);
+}
+.by-store details[open] > summary::before {
+  content: '▾';
+}
+.by-store summary b {
+  margin-left: auto;
+}
+.by-store .hint {
+  margin: 2px 0 4px;
+  font-size: 0.82rem;
+}
+.lines {
+  list-style: none;
+  margin: 4px 0 8px;
+  padding: 0;
+}
+.lines li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px dotted var(--line);
+}
+.lines li small {
+  grid-column: 1 / -1;
+  color: var(--muted);
+}
+.lines li b {
+  white-space: nowrap;
+}
+.lines li.total {
+  border-bottom: 0;
+  font-weight: 700;
+}
+.ing-cost {
+  color: var(--accent-dark);
+  font-weight: 600;
+}
+
+.store-logo {
+  display: inline-block;
+  height: 22px;
+  width: auto;
+  vertical-align: middle;
+  border-radius: 4px;
+  background: #fff;
+  padding: 1px;
+}
+.tag .store-logo {
+  height: 16px;
+}
+.where .store-logo,
+.by-store .store-logo {
+  height: 20px;
+}
+.store-name {
+  font-weight: 700;
+}

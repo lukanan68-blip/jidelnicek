@@ -1,15 +1,21 @@
 import { useMemo } from 'react';
-import { INGREDIENT_MAP, STAPLE_IDS } from '../data/ingredients';
-import { HOUR, RECIPE_MAP, RECIPE_SITES, recipeSearchUrl } from '../data/recipes';
-import { agoLabel, daysBetween, fmtAmount, fmtKc, formatDay, formatShort, uid } from '../lib/format';
+import { INGREDIENT_MAP, STAPLE_IDS, UNIT_LABEL } from '../data/ingredients';
+import { dishIcon, iconOf, plateParts } from '../data/icons';
+import { FAST, HOUR, RECIPE_MAP, RECIPE_SITES, recipeSearchUrl } from '../data/recipes';
+import { agoLabel, daysBetween, fmtAmount, fmtKc, fmtKcFine, fmtPrice, formatDay, formatShort, inStore, uid } from '../lib/format';
 import {
-  QUICK_MAX,
+  amountCost,
   buildLast,
   mealIngredients,
   planCost,
+  mealPricesByStore,
   planMealCost,
+  whereToBuy,
   type PriceFns,
 } from '../lib/planner';
+import { PriceLines } from './PriceLines';
+import { StoreBadge } from './StoreBadge';
+import { StoreSelect } from './StoreSelect';
 import { SLOT_LABEL, SLOT_ORDER, type HistoryEntry, type Plan, type PlanMeal, type Settings } from '../lib/types';
 
 interface Props {
@@ -19,13 +25,20 @@ interface Props {
   history: HistoryEntry[];
   setHistory: (fn: (h: HistoryEntry[]) => HistoryEntry[]) => void;
   pf: PriceFns;
+  /** Ceny ve všech obchodech, pro porovnání jídla po obchodech. */
+  pfAll: PriceFns;
   today: string;
+  shopStore: string;
+  setShopStore: (store: string) => void;
+  storesWithDeals: string[];
+  toggleHave: (id: string) => void;
   onGenerate: () => void;
-  onSwap: (dayIdx: number, mealIdx: number) => void;
+  onChoose: (dayIdx: number, mealIdx: number, altIdx: number) => void;
+  onMore: (dayIdx: number, mealIdx: number) => void;
   goTo: (tab: 'history') => void;
 }
 
-export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, today, onGenerate, onSwap, goTo }: Props) {
+export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, pfAll, today, shopStore, setShopStore, storesWithDeals, toggleHave, onGenerate, onChoose, onMore, goTo }: Props) {
   const total = plan ? planCost(plan, pf) : 0;
   const baseTotal = plan ? planCost(plan, { ...pf, eff: pf.base }) : 0;
   const saved = baseTotal - total;
@@ -33,7 +46,7 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
   const hasDate = plan ? plan.settings.useDate !== false : true;
   const over = plan && hasBudget ? total > plan.settings.budget + 0.5 : false;
   const anySlot = SLOT_ORDER.some((s) => settings.slots[s]);
-  const anyDuration = settings.duration.short || settings.duration.long;
+  const anyDuration = settings.duration.fast || settings.duration.short || settings.duration.long;
   const hasMains = settings.slots.lunch || settings.slots.dinner;
 
   return (
@@ -97,6 +110,11 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
           </div>
         </div>
 
+        <label className="field-wide">
+          Kde nakupuješ
+          <StoreSelect value={shopStore} onChange={setShopStore} withDeals={storesWithDeals} />
+        </label>
+
         <fieldset>
           <legend>Co plánovat</legend>
           <div className="chips">
@@ -113,17 +131,6 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
           </div>
         </fieldset>
 
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={settings.quick}
-            onChange={(e) => setSettings((s) => ({ ...s, quick: e.target.checked }))}
-          />
-          <span>
-            Nechci u toho trávit moc času
-            <small> – jen jídla do {QUICK_MAX} min u sporáku</small>
-          </span>
-        </label>
         <label className="check">
           <input
             type="checkbox"
@@ -152,6 +159,17 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
           <fieldset>
             <legend>Délka vaření (obědy a večeře, celkový čas)</legend>
             <div className="chips">
+              <label className="check">
+                <input
+                  type="checkbox"
+                  checked={settings.duration.fast}
+                  onChange={(e) => setSettings((s) => ({ ...s, duration: { ...s.duration, fast: e.target.checked } }))}
+                />
+                <span>
+                  Jídla do {FAST} minut
+                  <small> – rychlá, celkem do {FAST} min</small>
+                </span>
+              </label>
               <label className="check">
                 <input
                   type="checkbox"
@@ -226,8 +244,8 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
           {!!plan.missing && (
             <section className="card summary warn" role="alert">
               <p>
-                Pro zvolené filtry nebylo dost receptů, chybí {plan.missing} jídel. Povol i druhou délku vaření nebo
-                vypni rychlý režim.
+                Pro zvolené filtry nebylo dost receptů, chybí {plan.missing} jídel. Povol i další délku vaření nebo
+                vypni Bez masa.
               </p>
             </section>
           )}
@@ -246,8 +264,12 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
                     history={history}
                     setHistory={setHistory}
                     pf={pf}
+                    pfAll={pfAll}
                     today={today}
-                    onSwap={() => onSwap(di, mi)}
+                    setShopStore={setShopStore}
+                    toggleHave={toggleHave}
+                    onChoose={(ai) => onChoose(di, mi, ai)}
+                    onMore={() => onMore(di, mi)}
                   />
                 ))}
               </div>
@@ -267,11 +289,15 @@ interface MealProps {
   history: HistoryEntry[];
   setHistory: (fn: (h: HistoryEntry[]) => HistoryEntry[]) => void;
   pf: PriceFns;
+  pfAll: PriceFns;
   today: string;
-  onSwap: () => void;
+  setShopStore: (store: string) => void;
+  toggleHave: (id: string) => void;
+  onChoose: (altIdx: number) => void;
+  onMore: () => void;
 }
 
-function MealCard({ plan, dayIdx, date, meal, history, setHistory, pf, today, onSwap }: MealProps) {
+function MealCard({ plan, dayIdx, date, meal, history, setHistory, pf, pfAll, today, setShopStore, toggleHave, onChoose, onMore }: MealProps) {
   const recipe = RECIPE_MAP[meal.recipeId];
   const key = `${plan.id}:${dayIdx}:${meal.slot}`;
   const eaten = history.some((h) => h.source === key);
@@ -279,6 +305,9 @@ function MealCard({ plan, dayIdx, date, meal, history, setHistory, pf, today, on
   const mult = meal.doubled ? 2 : 1;
   const ings = mealIngredients(recipe, meal.sideId, mult);
   const cost = planMealCost(meal, pf);
+  const where = meal.leftover ? null : whereToBuy(meal.recipeId, meal.sideId, mult, pf);
+  const dish = dishIcon(recipe, meal.sideId);
+  const byStore = meal.leftover ? null : mealPricesByStore(meal.recipeId, meal.sideId, mult, pfAll);
 
   const tracked = ings
     .map(([id]) => INGREDIENT_MAP[id])
@@ -304,6 +333,30 @@ function MealCard({ plan, dayIdx, date, meal, history, setHistory, pf, today, on
       <div className="meal-head">
         <span className="slot">{SLOT_LABEL[meal.slot]}</span>
         <span className="cost">{meal.leftover ? 'zbytky' : fmtKc(cost)}</span>
+      </div>
+      {recipe.photo && (
+        <figure className="photo">
+          <img
+            src={recipe.photo.url}
+            alt={`${recipe.name}: hotové jídlo`}
+            loading="lazy"
+            referrerPolicy="no-referrer"
+            onError={(e) => {
+              const fig = e.currentTarget.parentElement;
+              if (fig) fig.style.display = 'none';
+            }}
+          />
+          <figcaption>
+            {recipe.photo.similar ? 'Podobné jídlo, foto: ' : 'Foto: '}
+            <a href={recipe.photo.link} target="_blank" rel="noreferrer">
+              {recipe.photo.site}
+            </a>
+          </figcaption>
+        </figure>
+      )}
+      <div className="plate" aria-hidden="true">
+        <span className="dish">{dish}</span>
+        <span className="parts">{plateParts(recipe, meal.sideId).filter((x) => x !== dish).join(' ')}</span>
       </div>
       <h4>{recipe.name}</h4>
       <p className="meta">
@@ -338,6 +391,81 @@ function MealCard({ plan, dayIdx, date, meal, history, setHistory, pf, today, on
         </p>
       )}
 
+      {where && (
+        <div className="where">
+          <b>{pf.store ? `Nakoupit ${inStore(pf.store)}:` : 'Nakoupit nejlevněji:'}</b>
+          {where.groups.length === 0 && where.other.length === 0 ? (
+            <span> vše máš doma</span>
+          ) : where.groups.length === 0 && !pf.store ? (
+            <span> bez slevy v načtených letácích, kup kdekoliv</span>
+          ) : (
+            <ul>
+              {where.groups.map((g) => (
+                <li key={g.store}>
+                  <StoreBadge store={g.store} />: {g.items.map((i) => `${iconOf(i.id)} ${i.name}`).join(', ')}
+                  <small>
+                    {' '}
+                    · zaplatíš asi {fmtKc(g.cost)}, ušetříš {fmtKc(g.saving)}
+                  </small>
+                </li>
+              ))}
+              {where.other.length > 0 && (
+                <li>
+                  <b>{pf.store ? `${pf.store} (bez akce)` : 'Kdekoliv'}</b>: {where.other.map((i) => `${iconOf(i.id)} ${i.name}`).join(', ')}
+                  <small> · asi {fmtKc(where.otherCost)}</small>
+                </li>
+              )}
+            </ul>
+          )}
+          {where.have.length > 0 && (
+            <p className="have-line">
+              <b>Mám doma:</b> {where.have.map((i) => `${iconOf(i.id)} ${i.name}`).join(', ')}
+            </p>
+          )}
+        </div>
+      )}
+      {byStore && byStore.stores.length > 0 && (
+        <div className="by-store">
+          <b>Cena jídla, když nakoupíš jen v jednom obchodě:</b>
+          <p className="hint">Klepni na obchod a uvidíš cenu rozepsanou po surovinách.</p>
+          <ul>
+            {byStore.stores.map((s, i) => (
+              <li key={s.store} className={`${i === 0 ? 'best' : ''} ${pf.store === s.store ? 'chosen' : ''}`}>
+                <details>
+                  <summary>
+                    <span>
+                      <StoreBadge store={s.store} />
+                      <small className="muted">
+                        {' '}
+                        · {s.onSale} {s.onSale === 1 ? 'surovina' : s.onSale < 5 ? 'suroviny' : 'surovin'} v akci
+                        {i === 0 ? ', nejlevněji' : ''}
+                      </small>
+                    </span>
+                    <b>{fmtKc(s.total)}</b>
+                  </summary>
+                  <PriceLines lines={s.lines} />
+                  <button className="mini" onClick={() => setShopStore(pf.store === s.store ? '' : s.store)}>
+                    {pf.store === s.store ? 'Zrušit nákup jen v jednom obchodě' : `Nakupovat jen ${inStore(s.store)}`}
+                  </button>
+                </details>
+              </li>
+            ))}
+            <li>
+              <details>
+                <summary>
+                  <span>
+                    Bez slev <small className="muted">· odhad</small>
+                  </span>
+                  <b>{fmtKc(byStore.base)}</b>
+                </summary>
+                <PriceLines lines={byStore.baseLines} />
+              </details>
+            </li>
+          </ul>
+        </div>
+      )}
+      {meal.leftover && <p className="where">Suroviny jsou nakoupené u večeře.</p>}
+
       <details>
         <summary>Suroviny pro 2 lidi</summary>
         <ul className="ings">
@@ -347,9 +475,31 @@ function MealCard({ plan, dayIdx, date, meal, history, setHistory, pf, today, on
             return (
               <li key={id}>
                 <span>
+                  <span className="ico" aria-hidden="true">
+                    {iconOf(id)}
+                  </span>{' '}
                   {i.name} <em>{fmtAmount(i.unit, a)}</em>
+                  {!meal.leftover && (
+                    <em className="ing-cost">
+                      {' · '}
+                      {pf.has(id) ? 'doma' : fmtKcFine(amountCost(id, a, pf.eff(id)))}
+                    </em>
+                  )}
                 </span>
-                {best && !meal.leftover && <span className="tag">sleva {best.store}</span>}
+                {!meal.leftover && (
+                  <button
+                    className={`have-btn ${pf.has(id) ? 'on' : ''}`}
+                    aria-pressed={pf.has(id)}
+                    onClick={() => toggleHave(id)}
+                  >
+                    {pf.has(id) ? '✓ Mám doma' : 'Mám doma'}
+                  </button>
+                )}
+                {best && !meal.leftover && (
+                  <span className="tag">
+                    <StoreBadge store={best.store} /> {fmtPrice(best.price)}/{UNIT_LABEL[i.unit]}
+                  </span>
+                )}
               </li>
             );
           })}
@@ -360,8 +510,58 @@ function MealCard({ plan, dayIdx, date, meal, history, setHistory, pf, today, on
         <button className={eaten ? 'done' : ''} onClick={toggleEaten} aria-pressed={eaten}>
           {eaten ? '✓ Snědeno' : 'Snědeno'}
         </button>
-        {!meal.leftover && <button onClick={onSwap}>Vyměnit</button>}
+        {!meal.leftover && <button onClick={onMore}>Další možnosti</button>}
       </div>
+      {!meal.leftover && meal.alts && meal.alts.length > 0 && (
+        <div className="alts">
+          <h5>Nebo si vyber jiné jídlo</h5>
+          <ul>
+            {meal.alts.map((a, ai) => {
+              const r = RECIPE_MAP[a.recipeId];
+              const altMeal: PlanMeal = { slot: meal.slot, recipeId: a.recipeId, sideId: a.sideId, doubled: meal.doubled };
+              const w = whereToBuy(a.recipeId, a.sideId, mult, pf);
+              const ap = mealPricesByStore(a.recipeId, a.sideId, mult, pfAll);
+              return (
+                <li key={a.recipeId}>
+                  {r.photo && (
+                    <img
+                      className="alt-photo"
+                      src={r.photo.url}
+                      alt=""
+                      loading="lazy"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  )}
+                  <div className="alt-info">
+                    <b>
+                      <span className="ico" aria-hidden="true">
+                        {dishIcon(r, a.sideId)}
+                      </span>{' '}
+                      {r.name}
+                    </b>
+                    <small>
+                      ⏱ {r.min}
+                      {r.extra ? ` + ${r.extra}` : ''} min · {fmtKc(planMealCost(altMeal, pf))}
+                      {a.sideId ? ` · příloha ${INGREDIENT_MAP[a.sideId].name}` : ''}
+                      {ap.stores.length > 0
+                        ? ` · nejlevněji ${inStore(ap.stores[0].store)} za ${fmtKc(ap.stores[0].total)}`
+                        : w.groups.length > 0
+                          ? ` · nakoupit: ${w.groups.slice(0, 3).map((g) => g.store).join(', ')}`
+                          : ''}
+                    </small>
+                  </div>
+                  <button onClick={() => onChoose(ai)} aria-label={`Vybrat ${r.name}`}>
+                    Vybrat
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
       {recipe.source && (
         <p className="source">
           Recept z webu{' '}

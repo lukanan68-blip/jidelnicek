@@ -1,7 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { MEAT_IDS } from '../data/ingredients';
-import { HOUR, RECIPE_MAP, totalMin } from '../data/recipes';
-import { QUICK_MAX, buildShopping, generatePlan, makePriceFns, mealIngredients, planCost, swapMeal, type PlanInput } from './planner';
+import { FAST, HOUR, RECIPE_MAP, totalMin } from '../data/recipes';
+import {
+  ALT_COUNT,
+  buildShopping,
+  chooseAlternative,
+  compareStores,
+  generatePlan,
+  makePriceFns,
+  mealIngredients,
+  mealPricesByStore,
+  moreAlternatives,
+  planCost,
+  whereToBuy,
+  type PlanInput,
+} from './planner';
 import type { Settings } from './types';
 
 const settings: Settings = {
@@ -10,9 +23,8 @@ const settings: Settings = {
   useBudget: true,
   useDate: true,
   slots: { breakfast: true, lunch: true, dinner: true },
-  quick: false,
   noMeat: false,
-  duration: { short: true, long: true },
+  duration: { fast: true, short: true, long: true },
   batch: false,
   startDate: '2026-11-11',
 };
@@ -82,14 +94,14 @@ describe('plánovač', () => {
   });
 
   it('filtr „do hodiny“ vybere obědy a večeře jen do 60 minut celkem', () => {
-    const p = generatePlan(base({}, { days: 6, duration: { short: true, long: false } }));
+    const p = generatePlan(base({}, { days: 6, duration: { fast: false, short: true, long: false } }));
     const mains = p.days.flatMap((d) => d.meals.filter((m) => m.slot !== 'breakfast'));
     expect(mains.length).toBe(12);
     for (const m of mains) expect(totalMin(RECIPE_MAP[m.recipeId])).toBeLessThanOrEqual(HOUR);
   });
 
   it('filtr „nad hodinu“ vybere jen delší jídla a snídaně nechá', () => {
-    const p = generatePlan(base({}, { days: 4, duration: { short: false, long: true } }));
+    const p = generatePlan(base({}, { days: 4, duration: { fast: false, short: false, long: true } }));
     const meals = p.days.flatMap((d) => d.meals);
     expect(meals.filter((m) => m.slot === 'breakfast')).toHaveLength(4);
     for (const m of meals.filter((x) => x.slot !== 'breakfast')) {
@@ -99,7 +111,7 @@ describe('plánovač', () => {
   });
 
   it('bez zaškrtnuté délky plán hlásí chybějící jídla', () => {
-    const p = generatePlan(base({}, { days: 2, duration: { short: false, long: false } }));
+    const p = generatePlan(base({}, { days: 2, duration: { fast: false, short: false, long: false } }));
     expect(p.missing).toBe(4);
   });
 
@@ -123,9 +135,20 @@ describe('plánovač', () => {
     }
   });
 
-  it('rychlý režim bere jen rychlá jídla', () => {
-    const p = generatePlan(base({}, { quick: true, days: 5 }));
-    for (const m of p.days.flatMap((d) => d.meals)) expect(RECIPE_MAP[m.recipeId].min).toBeLessThanOrEqual(QUICK_MAX);
+  it('filtr „do 35 minut“ bere jen jídla do 35 minut celkem', () => {
+    const p = generatePlan(base({}, { days: 5, duration: { fast: true, short: false, long: false } }));
+    const mains = p.days.flatMap((d) => d.meals.filter((m) => m.slot !== 'breakfast'));
+    expect(mains).toHaveLength(10);
+    expect(p.missing).toBe(0);
+    for (const m of mains) expect(totalMin(RECIPE_MAP[m.recipeId])).toBeLessThanOrEqual(FAST);
+  });
+
+  it('délky se sčítají: do 35 minut + nad hodinu vynechá jen jídla mezi tím', () => {
+    const p = generatePlan(base({}, { days: 6, duration: { fast: true, short: false, long: true } }));
+    for (const m of p.days.flatMap((d) => d.meals.filter((x) => x.slot !== 'breakfast'))) {
+      const t = totalMin(RECIPE_MAP[m.recipeId]);
+      expect(t <= FAST || t > HOUR, `${m.recipeId}: ${t}`).toBe(true);
+    }
   });
 
   it('dvojitá várka: oběd další den jsou zbytky z večeře', () => {
@@ -164,11 +187,162 @@ describe('plánovač', () => {
     expect(makePriceFns({}, d, '2026-11-25').best('vejce')).toBeUndefined();
   });
 
-  it('výměna jídla změní recept a zachová počet jídel', () => {
+  it('u každého uvařeného chodu je několik různých jídel k výběru', () => {
     const p = generatePlan(base());
-    const before = p.days[0].meals[1].recipeId;
-    const q = swapMeal(p, 0, 1, { history: [], discounts: [], prices: {}, today: '2026-11-11' }, 99);
-    expect(q.days[0].meals[1].recipeId).not.toBe(before);
+    for (const m of p.days.flatMap((d) => d.meals)) {
+      expect(m.alts, m.recipeId).toHaveLength(ALT_COUNT);
+      const ids = [m.recipeId, ...m.alts!.map((a) => a.recipeId)];
+      expect(new Set(ids).size).toBe(ids.length);
+      for (const id of ids) expect(RECIPE_MAP[id].meal).toBe(m.slot === 'breakfast' ? 'breakfast' : 'main');
+    }
+  });
+
+  it('výběr alternativy ji dosadí a původní jídlo zůstane mezi nabídkou', () => {
+    const p = generatePlan(base());
+    const before = p.days[0].meals[1];
+    const picked = before.alts![1];
+    const q = chooseAlternative(p, 0, 1, 1);
+    const after = q.days[0].meals[1];
+    expect(after.recipeId).toBe(picked.recipeId);
+    expect(after.sideId).toBe(picked.sideId);
+    expect(after.alts!.map((a) => a.recipeId)).toContain(before.recipeId);
+    expect(after.alts!.map((a) => a.recipeId)).not.toContain(picked.recipeId);
+    expect(after.alts).toHaveLength(ALT_COUNT);
+  });
+
+  it('u dvojité večeře se výběrem změní i zbytky druhý den', () => {
+    const p = generatePlan(base({}, { days: 4, batch: true }));
+    const di = 0;
+    const mi = p.days[di].meals.findIndex((m) => m.slot === 'dinner');
+    const q = chooseAlternative(p, di, mi, 0);
+    const dinner = q.days[di].meals[mi];
+    const lunch = q.days[di + 1].meals.find((m) => m.slot === 'lunch')!;
+    expect(lunch.leftover).toBe(true);
+    expect(lunch.recipeId).toBe(dinner.recipeId);
+    expect(lunch.sideId).toBe(dinner.sideId);
+  });
+
+  it('další možnosti nabídnou jiná jídla, než byla vidět', () => {
+    const p = generatePlan(base());
+    const m = p.days[0].meals[1];
+    const seen = new Set([m.recipeId, ...m.alts!.map((a) => a.recipeId)]);
+    const q = moreAlternatives(p, 0, 1, { history: [], discounts: [], prices: {}, today: '2026-11-11' }, 99);
+    const next = q.days[0].meals[1];
+    expect(next.recipeId).toBe(m.recipeId);
+    expect(next.alts!.length).toBeGreaterThan(0);
+    for (const a of next.alts!) expect(seen.has(a.recipeId)).toBe(false);
     expect(q.days.flatMap((d) => d.meals)).toHaveLength(9);
+  });
+
+  it('celý nákup v jednom obchodě: porovná obchody a kombinace je nejlevnější', () => {
+    const p = generatePlan(base({}, { days: 3 }));
+    const d = [
+      { id: '1', store: 'Lidl', ingredientId: 'vejce', price: 1, validTo: '2026-12-31' },
+      { id: '2', store: 'Kaufland', ingredientId: 'vejce', price: 3, validTo: '2026-12-31' },
+      { id: '3', store: 'Kaufland', ingredientId: 'kureci-prsa', price: 20, validTo: '2026-12-31' },
+    ];
+    const pf = makePriceFns({}, d, '2026-11-20');
+    const rows = buildShopping(p, pf);
+    const cmp = compareStores(rows, pf);
+    expect(cmp.stores.length).toBeGreaterThan(0);
+    for (const s of cmp.stores) {
+      expect(s.total).toBeLessThanOrEqual(cmp.base + 1e-9);
+      expect(s.total + 1e-9).toBeGreaterThanOrEqual(cmp.mixed);
+    }
+    expect(cmp.mixed).toBeLessThanOrEqual(cmp.base);
+    // seřazeno od nejlevnějšího, rozdíl se počítá proti prvnímu
+    expect(cmp.stores[0].extra).toBe(0);
+    for (let i = 1; i < cmp.stores.length; i++) expect(cmp.stores[i].total).toBeGreaterThanOrEqual(cmp.stores[i - 1].total);
+    // cena v obchodě bere nejnižší akci tohoto obchodu, jinak běžnou cenu
+    expect(pf.at('vejce', 'Lidl')).toBe(1);
+    expect(pf.at('vejce', 'Albert')).toBe(pf.base('vejce'));
+  });
+
+  it('nákup jen v jednom obchodě: cena celého nákupu sedí na porovnání obchodů', () => {
+    const p = generatePlan(base());
+    const d = [
+      { id: '1', store: 'Lidl', ingredientId: 'vejce', price: 1, validTo: '2026-12-31' },
+      { id: '2', store: 'Lidl', ingredientId: 'kureci-prsa', price: 50, validTo: '2026-12-31' },
+      { id: '3', store: 'Kaufland', ingredientId: 'vejce', price: 3, validTo: '2026-12-31' },
+      { id: '4', store: 'Kaufland', ingredientId: 'rajcata', price: 20, validTo: '2026-12-31' },
+    ];
+    const all = makePriceFns({}, d, '2026-11-20');
+    const cmp = compareStores(buildShopping(p, all), all);
+    expect(cmp.stores.length).toBe(2);
+    for (const s of cmp.stores) {
+      const one = makePriceFns({}, d, '2026-11-20', { store: s.store });
+      // v režimu jednoho obchodu se berou jen slevy tohoto obchodu
+      for (const r of buildShopping(p, one)) if (r.store) expect(r.store).toBe(s.store);
+      const total = buildShopping(p, one).reduce((a, r) => a + r.cost, 0);
+      expect(total).toBeCloseTo(s.total, 6);
+    }
+  });
+
+  it('plán pro jeden obchod počítá jen s jeho slevami', () => {
+    const d = [
+      { id: '1', store: 'Lidl', ingredientId: 'vejce', price: 1, validTo: '2026-12-31' },
+      { id: '2', store: 'Kaufland', ingredientId: 'kureci-prsa', price: 20, validTo: '2026-12-31' },
+    ];
+    const plan = generatePlan({ ...base({ discounts: d }), store: 'Lidl' });
+    const pf = makePriceFns({}, d, '2026-11-11', { store: 'Lidl' });
+    for (const r of buildShopping(plan, pf)) expect(r.store === undefined || r.store === 'Lidl').toBe(true);
+    expect(plan.days.flatMap((x) => x.meals)).toHaveLength(9);
+  });
+
+  it('mám doma: surovina nestojí nic, není k nákupu a je označená', () => {
+    const p = generatePlan(base());
+    const withHave = makePriceFns({}, [], '2026-11-20', { have: ['brambory', 'vejce'] });
+    const without = makePriceFns({}, [], '2026-11-20');
+    const rows = buildShopping(p, withHave);
+    for (const r of rows) expect(r.have).toBe(r.id === 'brambory' || r.id === 'vejce');
+    for (const r of rows.filter((x) => x.have)) expect(r.cost).toBe(0);
+    expect(planCost(p, withHave)).toBeLessThanOrEqual(planCost(p, without));
+    const w = whereToBuy('michana-vejce', 'chleb', 1, withHave);
+    expect(w.have.map((i) => i.id)).toEqual(['vejce']);
+    expect(w.other.map((i) => i.id)).not.toContain('vejce');
+  });
+
+  it('cena jídla v jednotlivých obchodech: od nejlevnějšího, nikdy nad cenou bez slev', () => {
+    const d = [
+      { id: '1', store: 'Lidl', ingredientId: 'vejce', price: 1, validTo: '2026-12-31' },
+      { id: '2', store: 'Kaufland', ingredientId: 'vejce', price: 3, validTo: '2026-12-31' },
+      { id: '3', store: 'Kaufland', ingredientId: 'rajcata', price: 10, validTo: '2026-12-31' },
+    ];
+    const pf = makePriceFns({}, d, '2026-11-20');
+    const r = mealPricesByStore('michana-vejce', 'chleb', 1, pf);
+    expect(r.stores.map((s) => s.store)).toEqual(['Lidl', 'Kaufland']);
+    expect(r.stores.map((s) => s.onSale)).toEqual([1, 2]);
+    for (const s of r.stores) expect(s.total).toBeLessThanOrEqual(r.base);
+    expect(r.stores[0].total).toBeLessThanOrEqual(r.stores[1].total);
+    // rozpis po surovinách: součet řádků = cena obchodu, akční řádky jsou označené
+    for (const st of r.stores) {
+      expect(st.lines.reduce((a, l) => a + l.cost, 0)).toBeCloseTo(st.total, 9);
+      for (const l of st.lines) expect(l.cost).toBeCloseTo(l.unit === 'ks' ? l.amount * l.unitPrice : (l.amount / 1000) * l.unitPrice, 9);
+    }
+    const lidl = r.stores.find((x) => x.store === 'Lidl')!;
+    expect(lidl.lines.find((l) => l.id === 'vejce')).toMatchObject({ unitPrice: 1, onSale: true, amount: 4, cost: 4 });
+    expect(lidl.lines.find((l) => l.id === 'chleb')!.onSale).toBe(false);
+    expect(r.baseLines.reduce((a, l) => a + l.cost, 0)).toBeCloseTo(r.base, 9);
+    expect(r.baseLines.every((l) => !l.onSale)).toBe(true);
+    // bez slev u tohoto jídla žádný obchod není
+    expect(mealPricesByStore('michana-vejce', 'chleb', 1, makePriceFns({}, [], '2026-11-20')).stores).toHaveLength(0);
+    // dvojitá várka stojí dvojnásobek
+    const two = mealPricesByStore('michana-vejce', 'chleb', 2, pf);
+    expect(two.base).toBeCloseTo(r.base * 2, 6);
+  });
+
+  it('kde nakoupit: seskupí suroviny podle nejlevnějšího obchodu a spočítá úsporu', () => {
+    const d = [{ id: 'd', store: 'Lidl', ingredientId: 'vejce', price: 1, validTo: '2026-12-31' }];
+    const w = whereToBuy('michana-vejce', 'chleb', 1, makePriceFns({}, d, '2026-11-20'));
+    expect(w.groups).toHaveLength(1);
+    expect(w.groups[0].store).toBe('Lidl');
+    expect(w.groups[0].items.map((i) => i.name)).toContain('Vejce');
+    expect(w.groups[0].cost).toBeGreaterThan(0);
+    expect(w.otherCost).toBeGreaterThan(0);
+    expect(w.groups[0].saving).toBeGreaterThan(10);
+    expect(w.other.map((i) => i.name)).toContain('Chléb');
+    const none = whereToBuy('michana-vejce', 'chleb', 1, makePriceFns({}, [], '2026-11-20'));
+    expect(none.groups).toHaveLength(0);
+    expect(none.saving).toBe(0);
   });
 });

@@ -16,11 +16,10 @@ export interface Settings {
   useDate: boolean;
   slots: Record<Slot, boolean>;
   /** „Nechci u toho trávit moc času“ – jen rychlá jídla. */
-  quick: boolean;
   /** Bez masa a ryb (vejce, mléčné výrobky a luštěniny zůstávají). */
   noMeat: boolean;
-  /** Délka vaření obědů a večeří (celkový čas): do hodiny a / nebo nad hodinu. */
-  duration: { short: boolean; long: boolean };
+  /** Délka vaření obědů a večeří (celkový čas): do 35 minut, do hodiny a / nebo nad hodinu. */
+  duration: { fast: boolean; short: boolean; long: boolean };
   /** Večeře uvařená dvojitě = oběd další den. */
   batch: boolean;
   startDate: string;
@@ -46,6 +45,12 @@ export interface Discount {
   validTo?: string;
 }
 
+/** Další možnost k výběru u jednoho chodu. */
+export interface PlanAlt {
+  recipeId: string;
+  sideId?: string;
+}
+
 export interface PlanMeal {
   slot: Slot;
   recipeId: string;
@@ -54,6 +59,8 @@ export interface PlanMeal {
   doubled?: boolean;
   /** Zbytky z včerejší večeře – nevaří se. */
   leftover?: boolean;
+  /** Další jídla, ze kterých jde u tohoto chodu vybírat. */
+  alts?: PlanAlt[];
 }
 
 export interface PlanDay {
