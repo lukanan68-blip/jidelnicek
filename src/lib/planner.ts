@@ -181,6 +181,8 @@ interface Pick {
   duration?: DurationFilter;
   noMeat?: boolean;
   sources?: string[];
+  /** 'only' = jen jednoduchá večeřová jídla, 'exclude' = bez nich (obědy). */
+  light?: 'only' | 'exclude';
   /** Jídla, která už se nedávno navrhovala. Dostanou malou penalizaci, aby se nenabízelo pořád totéž. */
   recent?: Set<string>;
   lambda: number;
@@ -219,7 +221,16 @@ function rankCandidates(p: Pick): Cand[] {
     (!p.batchOnly || !r.noBatch);
   const fromSources = p.sources && p.sources.length ? RECIPES.filter((r) => allowed(r) && p.sources!.includes(sourceOf(r))) : null;
   // z vybraných webů nic nevyhovuje (třeba snídaně) = vezmou se recepty odkudkoliv
-  const pool = fromSources && fromSources.length > 0 ? fromSources : RECIPES.filter(allowed);
+  let pool = fromSources && fromSources.length > 0 ? fromSources : RECIPES.filter(allowed);
+  // večeře jen jednoduché, obědy bez nich; když by nic nezbylo, filtr se vynechá
+  if (p.light) {
+    const lighter = pool.filter((r) => (p.light === 'only' ? !!r.light : !r.light));
+    if (lighter.length >= (p.want ?? 1)) pool = lighter;
+    else if (p.light === 'only') {
+      const alt = RECIPES.filter((r) => allowed(r) && r.light);
+      if (alt.length >= (p.want ?? 1)) pool = alt;
+    }
+  }
 
   const score = (recipes: Recipe[]): Cand[] => {
     const bestPerRecipe = new Map<string, Cand>();
@@ -334,6 +345,7 @@ function run(input: PlanInput, lambda: number): { days: PlanDay[]; total: number
         noMeat: settings.noMeat,
         sources: settings.sources,
         recent: recentSet,
+        light: settings.easyDinner === false || slot === 'breakfast' ? undefined : slot === 'dinner' ? 'only' : 'exclude',
         lambda,
         used,
         want: 1 + ALT_COUNT,
@@ -470,6 +482,7 @@ export function moreAlternatives(
     duration: plan.settings.duration,
     noMeat: plan.settings.noMeat,
     sources: plan.settings.sources,
+    light: (plan.settings.easyDinner === false || target.slot === 'breakfast' ? undefined : target.slot === 'dinner' ? 'only' : 'exclude') as 'only' | 'exclude' | undefined,
     lambda: 0,
     used,
     want: ALT_COUNT,

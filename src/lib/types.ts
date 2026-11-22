@@ -21,6 +21,8 @@ export interface Settings {
   noMeat: boolean;
   /** Délka vaření obědů a večeří (celkový čas): do 35 minut, do hodiny a / nebo nad hodinu. */
   duration: { fast: boolean; short: boolean; long: boolean; mid?: boolean; xlong?: boolean };
+  /** Večeře jen jednoduché (saláty, párky, sýry…), obědy z ostatních jídel. Chybí = zapnuto. */
+  easyDinner?: boolean;
   /** Z jakých webů mají být recepty (názvy zdrojů). Chybí = ze všech. */
   sources?: string[];
   /** Večeře uvařená dvojitě = oběd další den. */

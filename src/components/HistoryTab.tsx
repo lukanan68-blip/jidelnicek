@@ -1,8 +1,8 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef } from 'react';
 import { iconOf } from '../data/icons';
 import { HISTORY_GROUPS, INGREDIENT_MAP } from '../data/ingredients';
 import { RECIPE_MAP } from '../data/recipes';
-import { addDays, agoLabel, daysBetween, dnyLabel, formatShort, uid } from '../lib/format';
+import { addDays, agoLabel, daysBetween, formatShort, uid } from '../lib/format';
 import { buildLast } from '../lib/planner';
 import type { HistoryEntry } from '../lib/types';
 
@@ -15,20 +15,31 @@ interface Props {
 export function HistoryTab({ history, setHistory, today }: Props) {
   const last = useMemo(() => buildLast(history).ing, [history]);
 
-  // kolik dní po sobě jsem to jedl (končí vybraným dnem)
-  const [streak, setStreak] = useState(1);
+  /** Zapsáno u suroviny v tento den (jakýmkoliv způsobem). */
+  const isOn = (id: string, date: string) => history.some((e) => e.date === date && e.ingredientIds.includes(id));
+  /** Dá se zrušit jen ručně zapsané; to, co přišlo z „Snědeno“ u jídla, se maže v seznamu níž. */
+  const manual = (id: string, date: string) =>
+    history.some((e) => e.date === date && !e.recipeId && e.ingredientIds.length === 1 && e.ingredientIds[0] === id);
+
+  function toggle(id: string, date: string) {
+    if (manual(id, date)) {
+      setHistory((h) => h.filter((e) => !(e.date === date && !e.recipeId && e.ingredientIds.length === 1 && e.ingredientIds[0] === id)));
+    } else if (!isOn(id, date)) {
+      setHistory((h) => [...h, { id: uid(), date, ingredientIds: [id] }]);
+    }
+  }
 
   function add(id: string, date: string) {
-    setHistory((h) => {
-      const next = [...h];
-      for (let k = 0; k < streak; k++) {
-        const d = addDays(date, -k);
-        if (h.some((e) => e.date === d && !e.recipeId && e.ingredientIds.length === 1 && e.ingredientIds[0] === id)) continue;
-        next.push({ id: uid(), date: d, ingredientIds: [id] });
-      }
-      return next;
-    });
+    if (!isOn(id, date)) setHistory((h) => [...h, { id: uid(), date, ingredientIds: [id] }]);
   }
+
+  // posledních 7 dní: dnes, včera, předevčírem a dál se jménem dne
+  const dayChips = Array.from({ length: 7 }, (_, k) => {
+    const date = addDays(today, -k);
+    const wd = new Date(date + 'T00:00:00Z').toLocaleDateString('cs-CZ', { weekday: 'short', timeZone: 'UTC' });
+    const label = k === 0 ? 'Dnes' : k === 1 ? 'Včera' : k === 2 ? 'Předevčírem' : `${wd} ${formatShort(date)}`;
+    return { date, label };
+  });
 
   const log = [...history].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 20);
 
@@ -38,25 +49,9 @@ export function HistoryTab({ history, setHistory, today }: Props) {
         <h2>Co jsem jedl</h2>
         <p className="hint">
           Zaklikni, kdy jsi naposledy jedl kterou přílohu, maso, zeleninu nebo ovoce. Jídelníček se podle toho rozloží tak, aby se
-          střídalo. Stačí zhruba posledních 7 dní.
+          střídalo. Stačí zhruba posledních 7 dní. U každé suroviny si zaklikni všechny dny, kdy jsi ji jedl (třeba dnes, včera a
+          předevčírem). Dalším klepnutím den zase zrušíš.
         </p>
-        <label className="streak">
-          Jedl jsem to
-          <select value={streak} onChange={(e) => setStreak(Number(e.target.value))}>
-            <option value={1}>jen jeden den</option>
-            {[2, 3, 4, 5, 6, 7].map((n) => (
-              <option key={n} value={n}>
-                {n} {dnyLabel(n)} po sobě
-              </option>
-            ))}
-          </select>
-        </label>
-        {streak > 1 && (
-          <p className="hint">
-            Když klepneš třeba na „Včera“, zapíše se včerejšek a {streak - 1} {dnyLabel(streak - 1)} před ním. U „Dnes“ je to dnešek
-            a předchozí dny.
-          </p>
-        )}
       </section>
 
       {HISTORY_GROUPS.map((g) => (
@@ -83,9 +78,23 @@ export function HistoryTab({ history, setHistory, today }: Props) {
                       </span>
                     </div>
                     <div className="hist-btns">
-                      <button onClick={() => add(i.id, today)}>Dnes</button>
-                      <button onClick={() => add(i.id, addDays(today, -1))}>Včera</button>
-                      <button onClick={() => add(i.id, addDays(today, -2))}>−2 dny</button>
+                      {dayChips.map((c) => {
+                        const on = isOn(i.id, c.date);
+                        const locked = on && !manual(i.id, c.date);
+                        return (
+                          <button
+                            key={c.date}
+                            className={`day-chip ${on ? 'on' : ''}`}
+                            aria-pressed={on}
+                            disabled={locked}
+                            title={locked ? 'Zapsáno z jídla, smaž to dole v seznamu záznamů' : undefined}
+                            onClick={() => toggle(i.id, c.date)}
+                          >
+                            {on ? '✓ ' : ''}
+                            {c.label}
+                          </button>
+                        );
+                      })}
                       <DateButton label={`Jiné datum pro ${i.name}`} max={today} onPick={(d) => add(i.id, d)} />
                     </div>
                   </li>

@@ -161,10 +161,20 @@ export const LEAFLET_DEALS: LeafletDeal[] = [
   { source: 'lidl-1123', store: 'Lidl', ingredientId: 'kureci-stehna', price: 84.9, from: '2026-11-23', to: '2026-11-25', label: 'Kuřecí stehna a křídla mix (1 kg)', note: 'mix se křídly' },
   { source: 'lidl-1123', store: 'Lidl', ingredientId: 'klobasa', price: 131.6, from: '2026-11-23', to: '2026-11-25', label: 'Pikok kuřecí párky (250 g, 32,90 Kč)' },
   { source: 'lidl-1123', store: 'Lidl', ingredientId: 'tunak', price: 30.82, from: '2026-11-23', to: '2026-11-25', label: 'Nixe tuňák ve vlastní šťávě (4×195 g, 129,90 Kč)' },
+  { source: 'lidl-1123', store: 'Lidl', ingredientId: 'chleb', price: 48.91, from: '2026-11-23', to: '2026-11-29', label: 'Chléb s podmáslím (550 g, 26,90 Kč)' },
+  { source: 'lidl-1123', store: 'Lidl', ingredientId: 'veprova-plec', price: 129.9, from: '2026-11-23', to: '2026-11-25', label: 'Vepřové řízky z kýty (1 kg)', note: 'kýta, ne plec' },
+  { source: 'lidl-1123', store: 'Lidl', ingredientId: 'mozzarella', price: 169.0, from: '2026-11-23', to: '2026-11-25', label: 'Italat mozzarella (200 g, 16,90 Kč)', note: 'cena za 100 g po odkapání' },
   { source: 'lidl-1126', store: 'Lidl', ingredientId: 'okurka', price: 13.9, from: '2026-11-26', to: '2026-11-29', label: 'Okurka salátová (1 ks)' },
   { source: 'lidl-1126', store: 'Lidl', ingredientId: 'mlete', price: 124.75, from: '2026-11-26', to: '2026-11-29', label: 'Maso z farmy vepřové mleté (400 g, 49,90 Kč)' },
   { source: 'lidl-1126', store: 'Lidl', ingredientId: 'ryba', price: 178.74, from: '2026-11-26', to: '2026-11-29', label: 'Ocean Sea aljašská treska filety mražené (500 g, 84,90 Kč)' },
   { source: 'lidl-1126', store: 'Lidl', ingredientId: 'mouka', price: 19.95, from: '2026-11-26', to: '2026-11-29', label: 'Babiččina volba hladká / polohrubá (2 kg, 39,90 Kč)' },
+  { source: 'lidl-1126', store: 'Lidl', ingredientId: 'cibule', price: 12.9, from: '2026-11-26', to: '2026-11-29', label: 'Cibule žlutá (1 kg)' },
+  { source: 'lidl-1126', store: 'Lidl', ingredientId: 'avokado', price: 22.9, from: '2026-11-26', to: '2026-11-29', label: 'Avokádo (1 ks)' },
+  { source: 'lidl-1126', store: 'Lidl', ingredientId: 'rajcata', price: 79.8, from: '2026-11-26', to: '2026-11-29', label: 'Cherry rajčata (500 g, 39,90 Kč)', note: 'cherry' },
+  { source: 'lidl-1126', store: 'Lidl', ingredientId: 'veprova-plec', price: 149.83, from: '2026-11-26', to: '2026-11-29', label: 'Vepřová krkovice plátky s kostí (600 g, 89,90 Kč)', note: 'krkovice s kostí' },
+  { source: 'lidl-1126', store: 'Lidl', ingredientId: 'hermelin', price: 159.2, from: '2026-11-26', to: '2026-11-29', label: 'Lakmilk balkánský sýr (125 g, 19,90 Kč)', note: 'balkánský sýr' },
+  { source: 'lidl-1126', store: 'Lidl', ingredientId: 'sunka', price: 169.0, from: '2026-11-26', to: '2026-11-29', label: 'Pikok výběrová šunka krájená (100 g, 16,90 Kč)' },
+  { source: 'lidl-1126', store: 'Lidl', ingredientId: 'klobasa', price: 99.87, from: '2026-11-27', to: '2026-11-29', label: 'Pikok vepřové párečky (750 g, 74,90 Kč)', note: 'platí od pátku' },
 ];
 
 /** Slevy z letáků ve tvaru, který používá počítání cen. */

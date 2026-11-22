@@ -1106,3 +1106,18 @@ body::after {
   font-weight: 500;
   white-space: nowrap;
 }
+
+.hist-btns .day-chip {
+  min-height: 40px;
+  padding: 0 10px;
+  font-size: 0.9rem;
+}
+.hist-btns .day-chip.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}
+.hist-btns .day-chip.on:disabled {
+  opacity: 0.8;
+}

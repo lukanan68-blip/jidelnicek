@@ -1,6 +1,7 @@
 import { MEAT_IDS } from './ingredients';
 import { OWN_LINKS, OWN_PHOTOS } from './photos-own';
 import { HEALTH_RECIPES } from './recipes-health';
+import { LIGHT_RECIPES } from './recipes-light';
 import { WEB_RECIPES } from './recipes-web';
 
 export type MealType = 'breakfast' | 'main';
@@ -19,6 +20,8 @@ export interface Recipe {
   sideAmounts?: Record<string, number>;
   /** Suroviny bez přílohy, množství pro 2 osoby (g, ml nebo ks). */
   ing: [string, number][];
+  /** Jednoduchá a lehká jídla (saláty, párky, sýry…), určená hlavně na večeře. */
+  light?: boolean;
   /** Jídlo se nehodí na dvojitou várku. */
   noBatch?: boolean;
   /** Vlastní hledací dotaz pro odkaz na recept. */
@@ -114,7 +117,7 @@ const OWN_RECIPES: Recipe[] = [
   // ---------- OBĚDY A VEČEŘE ----------
   { id: 'kureci-paprika', name: 'Kuřecí na paprice se smetanou', meal: 'main', min: 35, sides: ALL_STARCH, ing: [['kureci-prsa', 300], ['cibule', 100], ['paprika', 150], ['smetana', 1]] },
   { id: 'kureci-stehna-pecena', name: 'Pečená kuřecí stehna se zeleninou', meal: 'main', min: 15, extra: 40, sides: ['brambory', 'ryze', 'kuskus', 'bulgur'], ing: [['kureci-stehna', 600], ['mrkev', 200], ['cibule', 100]] },
-  { id: 'testoviny-tunak', name: 'Těstoviny s tuňákem a rajčaty', meal: 'main', min: 20, sides: ['testoviny'], ing: [['tunak', 2], ['rajcata-konzerva', 1], ['cibule', 50], ['cesnek', 1]] },
+  { id: 'testoviny-tunak', name: 'Těstoviny s tuňákem a rajčaty', meal: 'main', light: true, min: 20, sides: ['testoviny'], ing: [['tunak', 2], ['rajcata-konzerva', 1], ['cibule', 50], ['cesnek', 1]] },
   { id: 'bolonske', name: 'Boloňská omáčka', meal: 'main', min: 30, sides: ['testoviny'], ing: [['mlete', 300], ['cibule', 100], ['mrkev', 100], ['rajcata-konzerva', 1], ['cesnek', 1]], search: 'boloňské špagety' },
   { id: 'cocka-kyselo', name: 'Čočka na kyselo s vejcem', meal: 'main', min: 30, sides: ['brambory', 'chleb'], sideAmounts: { chleb: 150 }, ing: [['cocka', 200], ['cibule', 100], ['vejce', 2]] },
   { id: 'rizoto-kureci', name: 'Rizoto s kuřecím a hráškem', meal: 'main', min: 30, sides: ['ryze'], sideAmounts: { ryze: 180 }, ing: [['kureci-prsa', 250], ['hrasek', 100], ['mrkev', 100], ['cibule', 80], ['parmezan', 40]] },
@@ -131,13 +134,13 @@ const OWN_RECIPES: Recipe[] = [
   { id: 'smazena-ryze', name: 'Smažená rýže s vejci a zeleninou', meal: 'main', min: 20, sides: ['ryze'], sideAmounts: { ryze: 200 }, ing: [['vejce', 3], ['hrasek', 100], ['mrkev', 100], ['cibule', 80]] },
   { id: 'ryba-zelenina', name: 'Rybí filé s brokolicí', meal: 'main', min: 25, extra: 10, sides: ['brambory', 'ryze', 'kuskus'], ing: [['ryba', 300], ['brokolice', 300], ['cesnek', 1]] },
   { id: 'kureci-houby', name: 'Kuřecí nudličky na žampionech se smetanou', meal: 'main', min: 30, sides: ['testoviny', 'ryze', 'knedliky'], ing: [['kureci-prsa', 250], ['zampiony', 200], ['cibule', 80], ['smetana', 1]] },
-  { id: 'wrapy-kureci', name: 'Wrapy s kuřecím a zeleninou', meal: 'main', min: 20, sides: ['tortilla'], ing: [['kureci-prsa', 250], ['paprika', 100], ['rajcata', 100], ['jogurt', 1], ['eidam', 50]], noBatch: true },
+  { id: 'wrapy-kureci', name: 'Wrapy s kuřecím a zeleninou', meal: 'main', light: true, min: 20, sides: ['tortilla'], ing: [['kureci-prsa', 250], ['paprika', 100], ['rajcata', 100], ['jogurt', 1], ['eidam', 50]], noBatch: true },
   { id: 'zapeceny-kvetak', name: 'Zapečený květák se šunkou a sýrem', meal: 'main', min: 20, extra: 30, sides: ['brambory', 'chleb'], sideAmounts: { chleb: 150 }, ing: [['kvetak', 500], ['sunka', 100], ['eidam', 100], ['vejce', 2], ['smetana', 1]] },
   { id: 'karbanatky', name: 'Karbanátky z mletého masa', meal: 'main', min: 35, sides: ['brambory', 'ryze'], ing: [['mlete', 350], ['vejce', 1], ['strouhanka', 50], ['cibule', 80], ['cesnek', 1], ['okurka', 1]], noBatch: true },
   { id: 'testoviny-brokolice', name: 'Těstoviny s brokolicí a sýrem', meal: 'main', min: 20, sides: ['testoviny'], ing: [['brokolice', 300], ['smetana', 1], ['eidam', 60], ['cesnek', 1]] },
   { id: 'pohanka-houby', name: 'Pohanka s žampiony a vejcem', meal: 'main', min: 25, sides: ['pohanka', 'ryze', 'bulgur'], ing: [['zampiony', 250], ['cibule', 80], ['vejce', 2]] },
   { id: 'mlete-paprika', name: 'Mleté maso na pánvi s paprikou a rajčaty', meal: 'main', min: 20, sides: ['ryze', 'testoviny', 'brambory', 'kuskus'], ing: [['mlete', 300], ['paprika', 150], ['rajcata', 150], ['cibule', 80]] },
-  { id: 'omeleta-sunka', name: 'Omeleta se šunkou a sýrem, salát', meal: 'main', min: 15, sides: ['chleb', 'tortilla'], sideAmounts: { chleb: 150, tortilla: 2 }, ing: [['vejce', 5], ['sunka', 80], ['eidam', 60], ['salat', 1]], noBatch: true },
+  { id: 'omeleta-sunka', name: 'Omeleta se šunkou a sýrem, salát', meal: 'main', light: true, min: 15, sides: ['chleb', 'tortilla'], sideAmounts: { chleb: 150, tortilla: 2 }, ing: [['vejce', 5], ['sunka', 80], ['eidam', 60], ['salat', 1]], noBatch: true },
   { id: 'kureci-zelenina-rice', name: 'Kuřecí kousky se sladkokyselou zeleninou', meal: 'main', min: 25, sides: ['ryze', 'bulgur'], ing: [['kureci-prsa', 250], ['paprika', 120], ['kukurice', 1], ['cibule', 80]] },
   { id: 'fazolovy-gulas', name: 'Fazolový guláš s klobásou', meal: 'main', min: 25, sides: ['chleb', 'brambory'], sideAmounts: { chleb: 250 }, ing: [['fazole', 2], ['klobasa', 150], ['cibule', 100], ['paprika', 80]] },
 
@@ -151,14 +154,35 @@ const OWN_RECIPES: Recipe[] = [
 
   // ---------- BEZ MASA (vejce, mléčné výrobky a luštěniny zůstávají) ----------
   { id: 'zapeceny-kvetak-syr', name: 'Zapečený květák se sýrem a vejci', meal: 'main', min: 20, extra: 30, sides: ['brambory', 'chleb'], sideAmounts: { chleb: 150 }, ing: [['kvetak', 500], ['eidam', 100], ['vejce', 2], ['smetana', 1]] },
-  { id: 'omeleta-syr', name: 'Omeleta se sýrem a rajčaty', meal: 'main', min: 15, sides: ['chleb', 'tortilla'], sideAmounts: { chleb: 150, tortilla: 2 }, ing: [['vejce', 5], ['eidam', 60], ['rajcata', 150], ['salat', 1]], noBatch: true },
-  { id: 'testoviny-rajcatova', name: 'Těstoviny s rajčatovou omáčkou a sýrem', meal: 'main', min: 20, sides: ['testoviny'], ing: [['rajcata-konzerva', 1], ['cibule', 80], ['cesnek', 1], ['parmezan', 60]] },
+  { id: 'omeleta-syr', name: 'Omeleta se sýrem a rajčaty', meal: 'main', light: true, min: 15, sides: ['chleb', 'tortilla'], sideAmounts: { chleb: 150, tortilla: 2 }, ing: [['vejce', 5], ['eidam', 60], ['rajcata', 150], ['salat', 1]], noBatch: true },
+  { id: 'testoviny-rajcatova', name: 'Těstoviny s rajčatovou omáčkou a sýrem', meal: 'main', light: true, min: 20, sides: ['testoviny'], ing: [['rajcata-konzerva', 1], ['cibule', 80], ['cesnek', 1], ['parmezan', 60]] },
   { id: 'cockova-polevka-zel', name: 'Čočková polévka se zeleninou', meal: 'main', min: 20, extra: 40, sides: ['chleb'], sideAmounts: { chleb: 200 }, ing: [['cocka', 150], ['mrkev', 100], ['cibule', 80], ['cesnek', 1]] },
   { id: 'chilli-sin-carne', name: 'Fazolové chilli bez masa', meal: 'main', min: 25, sides: ['ryze', 'tortilla', 'chleb'], sideAmounts: { chleb: 150 }, ing: [['fazole', 2], ['rajcata-konzerva', 1], ['kukurice', 1], ['paprika', 100], ['cibule', 100]] },
   { id: 'smazeny-syr', name: 'Smažený sýr s bramborami', meal: 'main', min: 30, sides: ['brambory', 'ryze'], ing: [['eidam', 250], ['vejce', 2], ['strouhanka', 80], ['mouka', 40], ['okurka', 1]], noBatch: true },
   { id: 'rizoto-zeleninove', name: 'Zeleninové rizoto se sýrem', meal: 'main', min: 30, sides: ['ryze'], sideAmounts: { ryze: 180 }, ing: [['hrasek', 100], ['mrkev', 100], ['cibule', 80], ['zampiony', 150], ['parmezan', 40]] },
   { id: 'testoviny-spenat', name: 'Těstoviny se špenátem a smetanou', meal: 'main', min: 20, sides: ['testoviny'], ing: [['spenat', 200], ['smetana', 1], ['cesnek', 1], ['parmezan', 40]] },
-  { id: 'cizrna-kuskus', name: 'Cizrnový salát s kuskusem', meal: 'main', min: 15, sides: ['kuskus', 'bulgur'], ing: [['cizrna', 2], ['okurka', 1], ['rajcata', 150], ['jogurt', 1]], noBatch: true },
+  { id: 'cizrna-kuskus', name: 'Cizrnový salát s kuskusem', meal: 'main', light: true, min: 15, sides: ['kuskus', 'bulgur'], ing: [['cizrna', 2], ['okurka', 1], ['rajcata', 150], ['jogurt', 1]], noBatch: true },
+
+  // ---------- JEDNODUCHÉ VEČEŘE (saláty, párky, klobásy, sýry) ----------
+  { id: 'parky-rohliky', name: 'Párky s hořčicí a rohlíky', meal: 'main', light: true, min: 10, sides: ['rohliky'], sideAmounts: { rohliky: 4 }, ing: [['klobasa', 300], ['okurka', 1]] },
+  { id: 'parky-bramborovy-salat', name: 'Párky s bramborovým salátem', meal: 'main', light: true, min: 25, sides: ['brambory'], sideAmounts: { brambory: 500 }, ing: [['klobasa', 300], ['vejce', 2], ['okurka', 1], ['cibule', 50], ['jogurt', 1]] },
+  { id: 'parky-fazole', name: 'Párky s fazolemi a chlebem', meal: 'main', light: true, min: 15, sides: ['chleb'], sideAmounts: { chleb: 150 }, ing: [['klobasa', 300], ['fazole', 1], ['cibule', 50]] },
+  { id: 'klobasa-chleb', name: 'Opečená klobása s chlebem a okurkou', meal: 'main', light: true, min: 15, sides: ['chleb'], sideAmounts: { chleb: 200 }, ing: [['klobasa', 350], ['cibule', 50], ['okurka', 1]] },
+  { id: 'klobasa-zelenina', name: 'Klobása s pečenou zeleninou', meal: 'main', light: true, min: 25, sides: ['chleb'], sideAmounts: { chleb: 150 }, ing: [['klobasa', 350], ['paprika', 200], ['cuketa', 200], ['cibule', 100]] },
+  { id: 'syrovy-talir', name: 'Sýrový talíř s chlebem a zeleninou', meal: 'main', light: true, min: 10, sides: ['chleb'], sideAmounts: { chleb: 200 }, ing: [['eidam', 120], ['hermelin', 100], ['rajcata', 200], ['okurka', 1], ['paprika', 100]] },
+  { id: 'caprese-pecivo', name: 'Caprese s mozzarellou a chlebem', meal: 'main', light: true, min: 10, sides: ['chleb'], sideAmounts: { chleb: 150 }, ing: [['mozzarella', 250], ['rajcata', 350]] },
+  { id: 'pecen-hermelin', name: 'Pečený hermelín s chlebem a zeleninou', meal: 'main', light: true, min: 20, sides: ['chleb'], sideAmounts: { chleb: 200 }, ing: [['hermelin', 200], ['cibule', 50], ['rajcata', 150]] },
+  { id: 'testovinovy-salat-sunka', name: 'Těstovinový salát se šunkou a sýrem', meal: 'main', light: true, min: 20, sides: ['testoviny'], sideAmounts: { testoviny: 150 }, ing: [['sunka', 100], ['eidam', 80], ['kukurice', 1], ['okurka', 1], ['jogurt', 1]] },
+  { id: 'testovinovy-salat-tunak', name: 'Těstovinový salát s tuňákem a kukuřicí', meal: 'main', light: true, min: 20, sides: ['testoviny'], sideAmounts: { testoviny: 150 }, ing: [['tunak', 1], ['kukurice', 1], ['okurka', 1], ['rajcata', 150], ['jogurt', 1]] },
+  { id: 'recky-salat-hermelin', name: 'Zeleninový salát s hermelínem a chlebem', meal: 'main', light: true, min: 15, sides: ['chleb'], sideAmounts: { chleb: 150 }, ing: [['rajcata', 300], ['okurka', 1], ['paprika', 100], ['cibule', 50], ['hermelin', 100]] },
+  { id: 'zel-salat-vejce', name: 'Zeleninový salát s vejci a chlebem', meal: 'main', light: true, min: 15, sides: ['chleb'], sideAmounts: { chleb: 150 }, ing: [['salat', 1], ['rajcata', 200], ['okurka', 1], ['vejce', 3]] },
+  { id: 'okurkovy-salat-sunka', name: 'Zeleninový salát s jogurtem a šunkou, chléb', meal: 'main', light: true, min: 10, sides: ['chleb'], sideAmounts: { chleb: 150 }, ing: [['okurka', 2], ['rajcata', 200], ['jogurt', 1], ['sunka', 80]] },
+  { id: 'wrap-tvaroh', name: 'Wrap s tvarohem a zeleninou', meal: 'main', light: true, min: 10, sides: ['tortilla'], sideAmounts: { tortilla: 4 }, ing: [['tvaroh', 2], ['okurka', 1], ['paprika', 100], ['rajcata', 100]] },
+  { id: 'wrap-sunka', name: 'Wrap se šunkou a sýrem', meal: 'main', light: true, min: 10, sides: ['tortilla'], sideAmounts: { tortilla: 4 }, ing: [['sunka', 100], ['eidam', 80], ['salat', 1], ['rajcata', 100]] },
+  { id: 'brambory-tvaroh', name: 'Vařené brambory s tvarohem a cibulkou', meal: 'main', light: true, min: 25, sides: ['brambory'], sideAmounts: { brambory: 600 }, ing: [['tvaroh', 2], ['cibule', 60], ['okurka', 1]] },
+  { id: 'obloz-chleb', name: 'Obložený chléb se šunkou, sýrem a zeleninou', meal: 'main', light: true, min: 10, sides: ['chleb'], sideAmounts: { chleb: 250 }, ing: [['sunka', 100], ['eidam', 100], ['rajcata', 150], ['okurka', 1]] },
+  { id: 'kuskus-salat-hermelin', name: 'Kuskusový salát se zeleninou a hermelínem', meal: 'main', light: true, min: 15, sides: ['kuskus'], sideAmounts: { kuskus: 150 }, ing: [['hermelin', 100], ['paprika', 100], ['okurka', 1], ['rajcata', 150]] },
+  { id: 'topinky-vejce-sunka', name: 'Topinky s vejci a šunkou', meal: 'main', light: true, min: 15, sides: ['chleb'], sideAmounts: { chleb: 200 }, ing: [['vejce', 4], ['sunka', 80], ['cesnek', 1]] },
 ];
 
 /** Naše recepty + recepty načtené z webů. */
@@ -170,6 +194,7 @@ export const RECIPES: Recipe[] = [
   }),
   ...WEB_RECIPES,
   ...HEALTH_RECIPES,
+  ...LIGHT_RECIPES,
 ];
 
 export const RECIPE_MAP: Record<string, Recipe> = Object.fromEntries(RECIPES.map((r) => [r.id, r]));

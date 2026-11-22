@@ -476,3 +476,17 @@ describe('nedávno navržená jídla', () => {
     expect(overlapWith).toBeLessThanOrEqual(8);
   });
 });
+
+describe('jednoduché večeře', () => {
+  it('večeře jsou lehká jídla a obědy ne, a jde to vypnout', () => {
+    const p = generatePlan(base({}, { days: 6, duration: { fast: true, short: true, long: true, mid: true, xlong: true } }));
+    const dinners = p.days.flatMap((d) => d.meals.filter((m) => m.slot === 'dinner'));
+    const lunches = p.days.flatMap((d) => d.meals.filter((m) => m.slot === 'lunch'));
+    expect(dinners.every((m) => RECIPE_MAP[m.recipeId].light)).toBe(true);
+    expect(lunches.every((m) => !RECIPE_MAP[m.recipeId].light)).toBe(true);
+    // i nabízené alternativy k večeři jsou lehké
+    for (const m of dinners) for (const a of m.alts ?? []) expect(RECIPE_MAP[a.recipeId].light, RECIPE_MAP[a.recipeId].name).toBe(true);
+    const off = generatePlan(base({}, { days: 6, easyDinner: false }));
+    expect(off.days.flatMap((d) => d.meals.filter((m) => m.slot === 'dinner')).some((m) => !RECIPE_MAP[m.recipeId].light)).toBe(true);
+  });
+});

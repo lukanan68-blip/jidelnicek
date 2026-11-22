@@ -198,6 +198,19 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
               </label>
             ))}
           </div>
+          {settings.slots.dinner && (
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={settings.easyDinner !== false}
+                onChange={(e) => setSettings((s) => ({ ...s, easyDinner: e.target.checked }))}
+              />
+              <span>
+                Jednoduché večeře
+                <small> – saláty, těstovinové saláty, párky, klobásy, sýry, wrapy. Obědy pak bývají vydatnější jídla.</small>
+              </span>
+            </label>
+          )}
         </div>
 
         {anySlot && (
