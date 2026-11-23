@@ -76,4 +76,9 @@ describe('letáky', () => {
       expect(ids.has(d.source), d.label).toBe(true);
     }
   });
+
+  it('jídlo, které má v názvu maso nebo ryby, je v surovinách opravdu obsahuje', () => {
+    const bad = RECIPES.filter((r) => /kuřec|hovězí|vepřov|krůt|losos|klobás|šunk/i.test(r.name) && !/zeleninov|bez masa/i.test(r.name) && !hasMeat(r));
+    expect(bad.map((r) => r.name)).toEqual([]);
+  });
 });

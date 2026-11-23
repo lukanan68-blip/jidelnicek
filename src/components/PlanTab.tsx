@@ -1,7 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { INGREDIENT_MAP, STAPLE_IDS, UNIT_LABEL } from '../data/ingredients';
 import { dishIcon, iconOf, plateParts } from '../data/icons';
-import { FAST, HOUR, HOUR_HALF, RECIPES, RECIPE_MAP, RECIPE_SITES, SOURCE_OPTIONS, difficulty, recipeSearchUrl, sourceOf } from '../data/recipes';
+import { FAST, HOUR, HOUR_HALF, RECIPES, RECIPE_MAP, RECIPE_SITES, SOURCE_OPTIONS, difficulty, type Recipe, recipeSearchUrl, sourceOf } from '../data/recipes';
 import { agoLabel, daysBetween, dnyLabel, fmtAmount, fmtKc, fmtKcFine, fmtPrice, formatDay, formatShort, inStore, uid } from '../lib/format';
 import {
   amountCost,
@@ -12,6 +12,7 @@ import {
   planCost,
   mealPricesByStore,
   planMealCost,
+  searchRecipes,
   whereToBuy,
   type PriceFns,
 } from '../lib/planner';
@@ -40,11 +41,12 @@ interface Props {
   clearHave: () => void;
   onGenerate: () => void;
   onChoose: (dayIdx: number, mealIdx: number, altIdx: number) => void;
+  onPick: (dayIdx: number, mealIdx: number, recipeId: string, sideId?: string) => void;
   onMore: (dayIdx: number, mealIdx: number) => void;
   goTo: (tab: 'history') => void;
 }
 
-export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, pfAll, today, shopStore, setShopStore, storesWithDeals, toggleHave, have, clearHave, onGenerate, onChoose, onMore, goTo }: Props) {
+export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, pfAll, today, shopStore, setShopStore, storesWithDeals, toggleHave, have, clearHave, onGenerate, onChoose, onPick, onMore, goTo }: Props) {
   const total = plan ? planCost(plan, pf) : 0;
   const baseTotal = plan ? planCost(plan, { ...pf, eff: pf.base }) : 0;
   const saved = baseTotal - total;
@@ -441,6 +443,7 @@ export function PlanTab({ settings, setSettings, plan, history, setHistory, pf, 
                     setShopStore={setShopStore}
                     toggleHave={toggleHave}
                     onChoose={(ai) => onChoose(di, mi, ai)}
+                    onPick={(rid, sid) => onPick(di, mi, rid, sid)}
                     onMore={() => onMore(di, mi)}
                   />
                 ))}
@@ -466,10 +469,11 @@ interface MealProps {
   setShopStore: (store: string) => void;
   toggleHave: (id: string) => void;
   onChoose: (altIdx: number) => void;
+  onPick: (recipeId: string, sideId?: string) => void;
   onMore: () => void;
 }
 
-function MealCard({ plan, dayIdx, date, meal, history, setHistory, pf, pfAll, today, setShopStore, toggleHave, onChoose, onMore }: MealProps) {
+function MealCard({ plan, dayIdx, date, meal, history, setHistory, pf, pfAll, today, setShopStore, toggleHave, onChoose, onPick, onMore }: MealProps) {
   const recipe = RECIPE_MAP[meal.recipeId];
   const key = `${plan.id}:${dayIdx}:${meal.slot}`;
   const eaten = history.some((h) => h.source === key);
@@ -499,6 +503,62 @@ function MealCard({ plan, dayIdx, date, meal, history, setHistory, pf, pfAll, to
       ]);
     }
   }
+
+  const [query, setQuery] = useState('');
+  const found = useMemo(
+    () => searchRecipes(query, meal.slot === 'breakfast' ? 'breakfast' : 'main', { noMeat: plan.settings.noMeat, exclude: new Set([meal.recipeId]) }),
+    [query, meal.slot, meal.recipeId, plan.settings.noMeat],
+  );
+  /** Z příloh receptu vybere tu, kterou jsi jedl nejdéle. */
+  const bestSide = (r: Recipe): string | undefined => {
+    if (!r.sides.length) return undefined;
+    const dist = (id: string) => (last.ing[id] ? daysBetween(last.ing[id], today) : Infinity);
+    return [...r.sides].sort((x, y) => dist(y) - dist(x))[0];
+  };
+
+  const altRow = (recipeId: string, sideId: string | undefined, onPickRow: () => void) => {
+    const r = RECIPE_MAP[recipeId];
+    const altMeal: PlanMeal = { slot: meal.slot, recipeId, sideId, doubled: meal.doubled, batchDays: meal.batchDays };
+    const w = whereToBuy(recipeId, sideId, mult, pf);
+    const ap = mealPricesByStore(recipeId, sideId, mult, pfAll);
+    return (
+      <li key={recipeId}>
+        {r.photo && (
+          <img
+            className="alt-photo"
+            src={r.photo.url}
+            alt=""
+            loading="lazy"
+            referrerPolicy="no-referrer"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        )}
+        <div className="alt-info">
+          <b>
+            <span className="ico" aria-hidden="true">
+              {dishIcon(r, sideId)}
+            </span>{' '}
+            {r.name} <span className="diff">({difficulty(r)})</span>
+          </b>
+          <small>
+            ⏱ {r.min}
+            {r.extra ? ` + ${r.extra}` : ''} min · {fmtKc(planMealCost(altMeal, pf))}
+            {sideId ? ` · příloha ${INGREDIENT_MAP[sideId].name}` : ''}
+            {ap.stores.length > 0
+              ? ` · nejlevněji ${inStore(ap.stores[0].store)} za ${fmtKc(ap.stores[0].total)}`
+              : w.groups.length > 0
+                ? ` · nakoupit: ${w.groups.slice(0, 3).map((g) => g.store).join(', ')}`
+                : ''}
+          </small>
+        </div>
+        <button onClick={onPickRow} aria-label={`Vybrat ${r.name}`}>
+          Vybrat
+        </button>
+      </li>
+    );
+  };
 
   return (
     <article className={`meal ${eaten ? 'eaten' : ''}`}>
@@ -732,51 +792,26 @@ function MealCard({ plan, dayIdx, date, meal, history, setHistory, pf, pfAll, to
       {!meal.leftover && meal.alts && meal.alts.length > 0 && (
         <div className="alts">
           <h5>Nebo si vyber jiné jídlo</h5>
-          <ul>
-            {meal.alts.map((a, ai) => {
-              const r = RECIPE_MAP[a.recipeId];
-              const altMeal: PlanMeal = { slot: meal.slot, recipeId: a.recipeId, sideId: a.sideId, doubled: meal.doubled, batchDays: meal.batchDays };
-              const w = whereToBuy(a.recipeId, a.sideId, mult, pf);
-              const ap = mealPricesByStore(a.recipeId, a.sideId, mult, pfAll);
-              return (
-                <li key={a.recipeId}>
-                  {r.photo && (
-                    <img
-                      className="alt-photo"
-                      src={r.photo.url}
-                      alt=""
-                      loading="lazy"
-                      referrerPolicy="no-referrer"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
-                  )}
-                  <div className="alt-info">
-                    <b>
-                      <span className="ico" aria-hidden="true">
-                        {dishIcon(r, a.sideId)}
-                      </span>{' '}
-                      {r.name} <span className="diff">({difficulty(r)})</span>
-                    </b>
-                    <small>
-                      ⏱ {r.min}
-                      {r.extra ? ` + ${r.extra}` : ''} min · {fmtKc(planMealCost(altMeal, pf))}
-                      {a.sideId ? ` · příloha ${INGREDIENT_MAP[a.sideId].name}` : ''}
-                      {ap.stores.length > 0
-                        ? ` · nejlevněji ${inStore(ap.stores[0].store)} za ${fmtKc(ap.stores[0].total)}`
-                        : w.groups.length > 0
-                          ? ` · nakoupit: ${w.groups.slice(0, 3).map((g) => g.store).join(', ')}`
-                          : ''}
-                    </small>
-                  </div>
-                  <button onClick={() => onChoose(ai)} aria-label={`Vybrat ${r.name}`}>
-                    Vybrat
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+          <ul>{meal.alts.map((a, ai) => altRow(a.recipeId, a.sideId, () => onChoose(ai)))}</ul>
+        </div>
+      )}
+
+      {!meal.leftover && (
+        <div className="alts recipe-search">
+          <h5>Hledat konkrétní jídlo</h5>
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="např. kuře, salát, sýr, těstoviny, brokolice"
+            aria-label="Hledat jídlo podle názvu nebo suroviny"
+          />
+          {query.trim().length >= 2 &&
+            (found.length === 0 ? (
+              <p className="muted">Nic jsem nenašel. Zkus jiné slovo nebo kratší část slova.</p>
+            ) : (
+              <ul>{found.map((r) => altRow(r.id, bestSide(r), () => onPick(r.id, bestSide(r))))}</ul>
+            ))}
         </div>
       )}
     </article>

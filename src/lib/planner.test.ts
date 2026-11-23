@@ -5,6 +5,8 @@ import {
   ALT_COUNT,
   buildShopping,
   chooseAlternative,
+  chooseRecipe,
+  searchRecipes,
   compareStores,
   generatePlan,
   makePriceFns,
@@ -488,5 +490,29 @@ describe('jednoduché večeře', () => {
     for (const m of dinners) for (const a of m.alts ?? []) expect(RECIPE_MAP[a.recipeId].light, RECIPE_MAP[a.recipeId].name).toBe(true);
     const off = generatePlan(base({}, { days: 6, easyDinner: false }));
     expect(off.days.flatMap((d) => d.meals.filter((m) => m.slot === 'dinner')).some((m) => !RECIPE_MAP[m.recipeId].light)).toBe(true);
+  });
+});
+
+describe('hledání jídel podle textu', () => {
+  it('najde podle názvu, suroviny i synonyma a nerozlišuje diakritiku', () => {
+    expect(searchRecipes('kuře', 'main').length).toBeGreaterThan(3);
+    expect(searchRecipes('salat', 'main').every((r) => /salát/i.test(r.name) || r.ing.length > 0)).toBe(true);
+    expect(searchRecipes('salát těstovinový', 'main').length).toBeGreaterThan(0);
+    expect(searchRecipes('sýr', 'main').some((r) => r.ing.some(([id]) => ['eidam', 'mozzarella', 'parmezan', 'hermelin'].includes(id)))).toBe(true);
+    expect(searchRecipes('a', 'main')).toEqual([]);
+    expect(searchRecipes('xyzxyz', 'main')).toEqual([]);
+    expect(searchRecipes('kuře', 'main', { noMeat: true })).toEqual([]);
+    // snídaně se hledají jen mezi snídaněmi
+    expect(searchRecipes('vločky', 'breakfast').every((r) => r.meal === 'breakfast')).toBe(true);
+  });
+
+  it('vybraný recept nahradí jídlo a původní zůstane v nabídce', () => {
+    const p = generatePlan(base({}, { days: 2 }));
+    const target = p.days[0].meals.find((m) => m.slot === 'lunch')!;
+    const mi = p.days[0].meals.indexOf(target);
+    const found = searchRecipes('kuře', 'main', { exclude: new Set([target.recipeId]) })[0];
+    const next = chooseRecipe(p, 0, mi, found.id, found.sides[0]);
+    expect(next.days[0].meals[mi].recipeId).toBe(found.id);
+    expect(next.days[0].meals[mi].alts?.[0].recipeId).toBe(target.recipeId);
   });
 });

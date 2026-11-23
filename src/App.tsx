@@ -8,7 +8,7 @@ import { leafletDiscounts } from './data/leaflets';
 import { SOURCE_OPTIONS, type DurationFilter } from './data/recipes';
 import { todayISO } from './lib/format';
 import { migrateDiscounts, migrateHistory, migrateIds, migratePrices } from './lib/migrate';
-import { chooseAlternative, generatePlan, makePriceFns, moreAlternatives } from './lib/planner';
+import { chooseAlternative, chooseRecipe, generatePlan, makePriceFns, moreAlternatives } from './lib/planner';
 import type { Discount, HistoryEntry, Plan, PriceOverrides, Settings } from './lib/types';
 import { useStored } from './lib/useStored';
 
@@ -108,6 +108,11 @@ export default function App() {
     setPlan(chooseAlternative(plan, dayIdx, mealIdx, altIdx));
   }
 
+  function onPick(dayIdx: number, mealIdx: number, recipeId: string, sideId?: string) {
+    if (!plan) return;
+    setPlan(chooseRecipe(plan, dayIdx, mealIdx, recipeId, sideId));
+  }
+
   function onMore(dayIdx: number, mealIdx: number) {
     if (!plan) return;
     const seed = Math.floor(Math.random() * 1e9);
@@ -148,6 +153,7 @@ export default function App() {
             clearHave={() => setHave([])}
             onGenerate={onGenerate}
             onChoose={onChoose}
+            onPick={onPick}
             onMore={onMore}
             goTo={setTab}
           />

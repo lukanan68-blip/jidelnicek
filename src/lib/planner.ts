@@ -1,5 +1,5 @@
 import { INGREDIENT_MAP, PACKS, STAPLE_IDS } from '../data/ingredients';
-import { RECIPES, RECIPE_MAP, hasMeat, matchesDuration, sourceOf, type DurationFilter, type MealType, type Recipe } from '../data/recipes';
+import { RECIPES, RECIPE_MAP, hasMeat, matchesDuration, sourceOf, totalMin, type DurationFilter, type MealType, type Recipe } from '../data/recipes';
 import { addDays, daysBetween, fmtAmount, uid } from './format';
 import {
   SLOT_ORDER,
@@ -431,6 +431,68 @@ export function chooseAlternative(plan: Plan, dayIdx: number, mealIdx: number, a
     }),
   }));
   return { ...plan, days };
+}
+
+/** Dosadí do chodu libovolný recept (třeba vyhledaný). Původní jídlo se zařadí mezi alternativy. */
+export function chooseRecipe(plan: Plan, dayIdx: number, mealIdx: number, recipeId: string, sideId?: string): Plan {
+  const target = plan.days[dayIdx]?.meals[mealIdx];
+  if (!target || target.leftover || !RECIPE_MAP[recipeId] || recipeId === target.recipeId) return plan;
+  const fol = followers(plan, dayIdx, target);
+  const alts = [
+    { recipeId: target.recipeId, sideId: target.sideId },
+    ...(target.alts ?? []).filter((a) => a.recipeId !== recipeId),
+  ].slice(0, ALT_COUNT + 1);
+  const days = plan.days.map((day, di) => ({
+    ...day,
+    meals: day.meals.map((m, mi) => {
+      if (di === dayIdx && mi === mealIdx) return { ...m, recipeId, sideId, alts };
+      if (fol.some(([fd, fm]) => fd === di && fm === mi)) return { ...m, recipeId, sideId };
+      return m;
+    }),
+  }));
+  return { ...plan, days };
+}
+
+const normText = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+/** Slova, která se hledají i v názvech surovin (sýr = eidam, mozzarella…). */
+const SEARCH_SYNONYMS: Record<string, string[]> = {
+  syr: ['eidam', 'mozzarella', 'parmezan', 'hermelin'],
+  syry: ['eidam', 'mozzarella', 'parmezan', 'hermelin'],
+  maso: ['kureci', 'hovezi', 'veprov', 'mlete', 'klobasa', 'sunka', 'bucek'],
+  ryba: ['ryba', 'tunak', 'losos'],
+  ryby: ['ryba', 'tunak', 'losos'],
+  parky: ['klobasa'],
+  parek: ['klobasa'],
+  klobasy: ['klobasa'],
+};
+
+/**
+ * Vyhledá recepty podle toho, co uživatel napsal (v názvu, surovinách, příloze, zdroji). Všechna slova musí sedět.
+ * Hledá se mezi recepty stejného druhu (snídaně / oběd a večeře).
+ */
+export function searchRecipes(query: string, meal: MealType, opts: { noMeat?: boolean; exclude?: Set<string>; limit?: number } = {}): Recipe[] {
+  const words = normText(query).split(/[^a-z0-9]+/).filter((w) => w.length >= 2);
+  if (words.length === 0) return [];
+  const scored: { r: Recipe; score: number }[] = [];
+  for (const r of RECIPES) {
+    if (r.meal !== meal || opts.exclude?.has(r.id) || (opts.noMeat && hasMeat(r))) continue;
+    const name = normText(r.name);
+    const ingNames = [...r.ing.map(([id]) => id), ...r.sides].map((id) => normText(INGREDIENT_MAP[id]?.name ?? id) + ' ' + id);
+    const site = normText(r.source?.site ?? '');
+    let score = 0;
+    let ok = true;
+    for (const w of words) {
+      const syn = SEARCH_SYNONYMS[w] ?? [];
+      const inName = name.includes(w);
+      const inIng = ingNames.some((n) => n.includes(w) || syn.some((s) => n.includes(s)));
+      const inSite = site.includes(w);
+      if (!inName && !inIng && !inSite) { ok = false; break; }
+      score += inName ? 3 : inIng ? 1 : 0.5;
+    }
+    if (ok) scored.push({ r, score: score - totalMin(r) / 200 });
+  }
+  return scored.sort((a, b) => b.score - a.score).slice(0, opts.limit ?? 8).map((x) => x.r);
 }
 
 /** Nabídne u jednoho chodu nové alternativy (jiné než ty, které jsou vidět). */
